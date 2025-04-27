@@ -1,0 +1,2 @@
+# This file is intentionally left empty to ensure the models directory is included in the Git repository.
+# The models directory is used to store SQLAlchemy models for the application.

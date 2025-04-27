@@ -1,0 +1,107 @@
+{% extends "shared/base.html" %}
+
+{% block title %}My Visualizations - DynaDash{% endblock %}
+
+{% block content %}
+<div class="py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">My Visualizations</h1>
+            <a href="{{ url_for('data.index') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <i class="fas fa-database mr-1"></i> View Datasets
+            </a>
+        </div>
+        
+        <!-- User's Visualizations -->
+        <div class="mb-10">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Your Visualizations</h2>
+            
+            {% if user_visualisations %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for vis in user_visualisations %}
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-medium text-gray-800 truncate">{{ vis.title }}</h3>
+                                {% if vis.description %}
+                                    <p class="text-sm text-gray-500 truncate">{{ vis.description }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="p-4 bg-gray-50 h-40 flex items-center justify-center">
+                                <div class="w-full h-full overflow-hidden">
+                                    <!-- Visualization preview (placeholder) -->
+                                    <div class="w-full h-full flex items-center justify-center bg-gray-100 rounded">
+                                        <span class="text-gray-400">Visualization Preview</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 flex justify-between items-center">
+                                <span class="text-xs text-gray-500">
+                                    {{ vis.created_at.strftime('%b %d, %Y') }}
+                                </span>
+                                <div>
+                                    <a href="{{ url_for('visual.view', id=vis.id) }}" class="text-blue-600 hover:text-blue-800 mr-2">
+                                        View
+                                    </a>
+                                    <a href="{{ url_for('visual.share', id=vis.id) }}" class="text-green-600 hover:text-green-800">
+                                        Share
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white shadow-md rounded-lg p-6 text-center">
+                    <div class="text-gray-400 text-4xl mb-3">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">No Visualizations Yet</h3>
+                    <p class="text-gray-600 mb-4">
+                        You haven't created any visualizations yet. Upload a dataset and generate your first visualization!
+                    </p>
+                    <a href="{{ url_for('data.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Upload Dataset
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Shared Visualizations -->
+        {% if shared_visualisations %}
+            <div>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Shared With You</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for vis in shared_visualisations %}
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-medium text-gray-800 truncate">{{ vis.title }}</h3>
+                                {% if vis.description %}
+                                    <p class="text-sm text-gray-500 truncate">{{ vis.description }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="p-4 bg-gray-50 h-40 flex items-center justify-center">
+                                <div class="w-full h-full overflow-hidden">
+                                    <!-- Visualization preview (placeholder) -->
+                                    <div class="w-full h-full flex items-center justify-center bg-gray-100 rounded">
+                                        <span class="text-gray-400">Visualization Preview</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 flex justify-between items-center">
+                                <div class="text-xs text-gray-500">
+                                    <span>From: {{ vis.dataset.owner.name }}</span><br>
+                                    <span>{{ vis.created_at.strftime('%b %d, %Y') }}</span>
+                                </div>
+                                <a href="{{ url_for('visual.view', id=vis.id) }}" class="text-blue-600 hover:text-blue-800">
+                                    View
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

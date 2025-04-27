@@ -1,0 +1,164 @@
+{% extends "shared/base.html" %}
+
+{% block title %}Generate Visualization - DynaDash{% endblock %}
+
+{% block content %}
+<div class="py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Generate Visualization</h1>
+            <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Dataset
+            </a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Dataset Info -->
+            <div class="md:col-span-1">
+                <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-800">Dataset Details</h2>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-medium text-gray-800 mb-1">{{ dataset.original_filename }}</h3>
+                        <p class="text-sm text-gray-500 mb-4">
+                            {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            <span class="font-medium">Uploaded:</span> {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            <span class="font-medium">Visibility:</span> 
+                            <span class="{{ 'text-green-600' if dataset.is_public else 'text-gray-800' }}">
+                                {{ 'Public' if dataset.is_public else 'Private' }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Visualization Form -->
+            <div class="md:col-span-2">
+                <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-800">Visualization Options</h2>
+                    </div>
+                    <div class="p-4">
+                        <form method="POST" action="{{ url_for('visual.generate', dataset_id=dataset.id) }}">
+                            {{ form.hidden_tag() }}
+                            
+                            <div class="mb-4">
+                                <label for="title" class="block text-sm font-medium text-gray-700">
+                                    {{ form.title.label }}
+                                </label>
+                                <div class="mt-1">
+                                    {{ form.title(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md") }}
+                                    {% if form.title.errors %}
+                                        <div class="text-red-500 text-xs mt-1">
+                                            {% for error in form.title.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="description" class="block text-sm font-medium text-gray-700">
+                                    {{ form.description.label }}
+                                </label>
+                                <div class="mt-1">
+                                    {{ form.description(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md", rows=3) }}
+                                    {% if form.description.errors %}
+                                        <div class="text-red-500 text-xs mt-1">
+                                            {% for error in form.description.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label for="chart_type" class="block text-sm font-medium text-gray-700">
+                                    {{ form.chart_type.label }}
+                                </label>
+                                <div class="mt-1">
+                                    {{ form.chart_type(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md") }}
+                                    {% if form.chart_type.errors %}
+                                        <div class="text-red-500 text-xs mt-1">
+                                            {% for error in form.chart_type.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                {{ form.submit(class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-2">Visualization Information</h3>
+                    <ul class="list-disc list-inside text-blue-700 space-y-1">
+                        <li>Visualizations are generated using Anthropic's Claude API</li>
+                        <li>The process may take a few moments to complete</li>
+                        <li>You can share your visualizations with other users</li>
+                        <li>Choose the chart type that best represents your data</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Processing Modal -->
+        <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Generating Visualization</h3>
+                <div class="mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p id="progress-label" class="text-sm text-gray-600 mt-2">Initializing...</p>
+                </div>
+                <p class="text-gray-600 text-sm">
+                    Please wait while we generate your visualization. This may take a few moments.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        const form = $('form');
+        const processingModal = $('#processing-modal');
+        const progressBar = $('#progress-bar');
+        const progressLabel = $('#progress-label');
+        
+        form.on('submit', function() {
+            processingModal.removeClass('hidden');
+            
+            // Connect to Socket.IO for progress updates
+            const socket = io();
+            
+            socket.on('progress_update', function(data) {
+                progressBar.css('width', data.percent + '%');
+                progressLabel.text(data.message);
+            });
+            
+            socket.on('processing_complete', function() {
+                progressBar.css('width', '100%');
+                progressLabel.text('Visualization generated successfully!');
+                
+                // Redirect will happen automatically from the server
+            });
+        });
+    });
+</script>
+{% endblock %}

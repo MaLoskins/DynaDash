@@ -1,0 +1,24 @@
+{% extends "shared/base.html" %}
+
+{% block title %}{{ code }} {{ title }} - DynaDash{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 text-center">
+        <div>
+            <h1 class="text-9xl font-extrabold text-blue-600">{{ code }}</h1>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                {{ title }}
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                {{ message }}
+            </p>
+        </div>
+        <div>
+            <a href="{{ url_for('visual.index') if current_user.is_authenticated else url_for('auth.login') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Go to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

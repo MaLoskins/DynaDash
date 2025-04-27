@@ -1,0 +1,134 @@
+{% extends "shared/base.html" %}
+
+{% block title %}My Datasets - DynaDash{% endblock %}
+
+{% block content %}
+<div class="py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">My Datasets</h1>
+            <a href="{{ url_for('data.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <i class="fas fa-upload mr-1"></i> Upload Dataset
+            </a>
+        </div>
+        
+        <!-- User's Datasets -->
+        <div class="mb-10">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Your Datasets</h2>
+            
+            {% if user_datasets %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for dataset in user_datasets %}
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-medium text-gray-800 truncate">{{ dataset.original_filename }}</h3>
+                                <p class="text-sm text-gray-500">
+                                    {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
+                                </p>
+                            </div>
+                            <div class="p-4 bg-gray-50">
+                                <p class="text-xs text-gray-500 mb-2">
+                                    Uploaded: {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
+                                </p>
+                                <p class="text-xs text-gray-500 mb-3">
+                                    Status: 
+                                    <span class="{{ 'text-green-600' if dataset.is_public else 'text-gray-600' }}">
+                                        {{ 'Public' if dataset.is_public else 'Private' }}
+                                    </span>
+                                </p>
+                                <div class="flex justify-between">
+                                    <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                                        View <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                    <a href="{{ url_for('data.share', id=dataset.id) }}" class="text-green-600 hover:text-green-800">
+                                        Share <i class="fas fa-share-alt ml-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white shadow-md rounded-lg p-6 text-center">
+                    <div class="text-gray-400 text-4xl mb-3">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">No Datasets Yet</h3>
+                    <p class="text-gray-600 mb-4">
+                        You haven't uploaded any datasets yet. Upload your first dataset to get started!
+                    </p>
+                    <a href="{{ url_for('data.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Upload Dataset
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Shared Datasets -->
+        {% if shared_datasets %}
+            <div class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Shared With You</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for dataset in shared_datasets %}
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-medium text-gray-800 truncate">{{ dataset.original_filename }}</h3>
+                                <p class="text-sm text-gray-500">
+                                    {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
+                                </p>
+                            </div>
+                            <div class="p-4 bg-gray-50">
+                                <p class="text-xs text-gray-500 mb-2">
+                                    Owner: {{ dataset.owner.name }}
+                                </p>
+                                <p class="text-xs text-gray-500 mb-3">
+                                    Uploaded: {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
+                                </p>
+                                <div class="flex justify-end">
+                                    <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                                        View <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Public Datasets -->
+        {% if public_datasets %}
+            <div>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Public Datasets</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for dataset in public_datasets %}
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="font-medium text-gray-800 truncate">{{ dataset.original_filename }}</h3>
+                                <p class="text-sm text-gray-500">
+                                    {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
+                                </p>
+                            </div>
+                            <div class="p-4 bg-gray-50">
+                                <p class="text-xs text-gray-500 mb-2">
+                                    Owner: {{ dataset.owner.name }}
+                                </p>
+                                <p class="text-xs text-gray-500 mb-3">
+                                    Uploaded: {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
+                                </p>
+                                <div class="flex justify-end">
+                                    <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                                        View <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

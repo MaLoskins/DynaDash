@@ -1,0 +1,2 @@
+# This file is intentionally left empty to ensure the templates directory is included in the Git repository.
+# The templates directory is used to store Jinja2 templates for the application.
