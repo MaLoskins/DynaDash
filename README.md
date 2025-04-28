@@ -171,6 +171,6 @@ flask seed-db
 ## Contributors
 
 - Matthew Haskins - Claude integration & chart renderer
-- Leo Chen - DB model & REST API
-- Jonas Liu - SQLite ops & optimisation
+- Leo Chen - DB model & SQLite ops
+- Jonas Liu - REST API & develop endpoints
 - Ziyue Xu - Security & API gateway
