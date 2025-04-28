@@ -1,6 +1,6 @@
 import os
-from flask import Flask
-from flask_login import LoginManager
+from flask import Flask, redirect, url_for
+from flask_login import LoginManager, current_user
 from flask_socketio import SocketIO
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
@@ -57,4 +57,11 @@ def create_app(config_name='default'):
     # Import socket event handlers
     from . import socket_events
     
+    @app.route('/')
+    def index():
+        if current_user.is_authenticated:
+            return redirect(url_for('visual.index'))
+        else:
+            return redirect(url_for('visual.welcome'))
+
     return app

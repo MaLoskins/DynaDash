@@ -10,7 +10,11 @@ from ...services.claude_client import ClaudeClient
 # Initialize the Claude client service
 claude_client = ClaudeClient()
 
-@visual.route('/')
+@visual.route('/welcome')
+def welcome():
+    return render_template('visual/welcome.html', title='Welcome')
+
+@visual.route('/index')
 @login_required
 def index():
     """Display the visualizations gallery."""
