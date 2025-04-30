@@ -3,15 +3,15 @@
 {% block title %}Register - DynaDash{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 bg-card-bg p-8 rounded-lg shadow-md border border-border-color">
         <div>
-            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            <h2 class="mt-6 text-center text-3xl font-extrabold">
                 Create an Account
             </h2>
-            <p class="mt-2 text-center text-sm text-gray-600">
+            <p class="mt-2 text-center text-sm">
                 Or
-                <a href="{{ url_for('auth.login') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                <a href="{{ url_for('auth.login') }}" class="font-medium hover:text-magenta-secondary">
                     sign in to your existing account
                 </a>
             </p>
@@ -21,7 +21,7 @@
             <div class="rounded-md shadow-sm -space-y-px">
                 <div>
                     <label for="name" class="sr-only">Name</label>
-                    {{ form.name(class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm", placeholder="Full Name") }}
+                    {{ form.name(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-t-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Full Name") }}
                     {% if form.name.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.name.errors %}
@@ -32,7 +32,7 @@
                 </div>
                 <div>
                     <label for="email" class="sr-only">Email address</label>
-                    {{ form.email(class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm", placeholder="Email address") }}
+                    {{ form.email(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 focus:outline-none focus:z-10 sm:text-sm", placeholder="Email address") }}
                     {% if form.email.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.email.errors %}
@@ -43,7 +43,7 @@
                 </div>
                 <div>
                     <label for="password" class="sr-only">Password</label>
-                    {{ form.password(class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm", placeholder="Password") }}
+                    {{ form.password(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 focus:outline-none focus:z-10 sm:text-sm", placeholder="Password") }}
                     {% if form.password.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.password.errors %}
@@ -54,7 +54,7 @@
                 </div>
                 <div>
                     <label for="confirm_password" class="sr-only">Confirm Password</label>
-                    {{ form.confirm_password(class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm", placeholder="Confirm Password") }}
+                    {{ form.confirm_password(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-b-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Confirm Password") }}
                     {% if form.confirm_password.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.confirm_password.errors %}
@@ -66,7 +66,7 @@
             </div>
 
             <div>
-                {{ form.submit(class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500") }}
+                {{ form.submit(class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2") }}
             </div>
         </form>
     </div>

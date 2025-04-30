@@ -20,52 +20,17 @@
     <!-- DOMPurify -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.0/purify.min.js"></script>
     
-    <!-- Custom CSS -->
-    <style>
-        /* Custom styles can go here */
-        .flash-messages {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1000;
-        }
-        
-        .flash-message {
-            margin-bottom: 0.5rem;
-            padding: 0.75rem 1rem;
-            border-radius: 0.25rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        .flash-success {
-            background-color: #10B981;
-            color: white;
-        }
-        
-        .flash-danger {
-            background-color: #EF4444;
-            color: white;
-        }
-        
-        .flash-warning {
-            background-color: #F59E0B;
-            color: white;
-        }
-        
-        .flash-info {
-            background-color: #3B82F6;
-            color: white;
-        }
-    </style>
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     
     {% block styles %}{% endblock %}
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+<body class="min-h-screen flex flex-col">
     <!-- Navigation -->
-    <nav 
+    <nav
        class="
          fixed top-0 left-0 w-full            /* Position & width */
-         bg-blue-600 text-white               /* Background & text color */
+         text-white                           /* Text color */
          shadow-md z-50                       /* Shadow & z-index */
          h-16                                 /* Height */
        "
@@ -80,10 +45,10 @@
                     </div>
                     {% if current_user.is_authenticated %}
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}border-b-2 border-white{% endif %} inline-flex items-center px-1 pt-1 text-sm font-medium">
+                        <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}border-b-2{% endif %} inline-flex items-center px-1 pt-1 text-sm font-medium">
                             Visualizations
                         </a>
-                        <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}border-b-2 border-white{% endif %} inline-flex items-center px-1 pt-1 text-sm font-medium">
+                        <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}border-b-2{% endif %} inline-flex items-center px-1 pt-1 text-sm font-medium">
                             Datasets
                         </a>
                         <a href="{{ url_for('data.upload') }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium">
@@ -98,30 +63,30 @@
                         <div class="flex items-center">
                             <span class="mr-2">{{ current_user.name }}</span>
                             <div class="relative">
-                                <button type="button" id="user-menu-button" class="bg-blue-500 flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-600 focus:ring-white">
+                                <button type="button" id="user-menu-button" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2">
                                     <span class="sr-only">Open user menu</span>
-                                    <div class="h-8 w-8 rounded-full bg-blue-300 flex items-center justify-center">
+                                    <div class="h-8 w-8 rounded-full flex items-center justify-center" style="background-color: var(--magenta-primary); color: var(--text-color);">
                                         {{ current_user.name[0] }}
                                     </div>
                                 </button>
                             </div>
-                            <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Your Profile</a>
-                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Change Password</a>
-                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">Sign out</a>
+                            <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm" role="menuitem">Your Profile</a>
+                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm" role="menuitem">Change Password</a>
+                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm" role="menuitem">Sign out</a>
                             </div>
                         </div>
                     </div>
                     {% else %}
                     <div class="flex space-x-4">
-                        <a href="{{ url_for('auth.login') }}" class="text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-md text-sm font-medium">Register</a>
+                        <a href="{{ url_for('auth.login') }}" class="text-white px-3 py-2 rounded-md text-sm font-medium">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="px-3 py-2 rounded-md text-sm font-medium">Register</a>
                     </div>
                     {% endif %}
                 </div>
                 <div class="-mr-2 flex items-center sm:hidden">
                     <!-- Mobile menu button -->
-                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
                         <span class="sr-only">Open main menu</span>
                         <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -135,45 +100,45 @@
         <div id="mobile-menu" class="hidden sm:hidden">
             <div class="pt-2 pb-3 space-y-1">
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}bg-blue-700{% else %}hover:bg-blue-700{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
                     Visualizations
                 </a>
-                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}bg-blue-700{% else %}hover:bg-blue-700{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
                     Datasets
                 </a>
-                <a href="{{ url_for('data.upload') }}" class="hover:bg-blue-700 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('data.upload') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
                     Upload
                 </a>
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="hover:bg-blue-700 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
                     Login
                 </a>
-                <a href="{{ url_for('auth.register') }}" class="hover:bg-blue-700 block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
                     Register
                 </a>
                 {% endif %}
             </div>
             {% if current_user.is_authenticated %}
-            <div class="pt-4 pb-3 border-t border-blue-700">
+            <div class="pt-4 pb-3 border-t border-1">
                 <div class="flex items-center px-4">
                     <div class="flex-shrink-0">
-                        <div class="h-10 w-10 rounded-full bg-blue-300 flex items-center justify-center">
+                        <div class="h-10 w-10 rounded-full flex items-center justify-center" style="background-color: var(--magenta-primary); color: var(--text-color);">
                             {{ current_user.name[0] }}
                         </div>
                     </div>
                     <div class="ml-3">
                         <div class="text-base font-medium">{{ current_user.name }}</div>
-                        <div class="text-sm font-medium text-blue-200">{{ current_user.email }}</div>
+                        <div class="text-sm font-medium" style="color: var(--text-secondary);">{{ current_user.email }}</div>
                     </div>
                 </div>
                 <div class="mt-3 space-y-1">
-                    <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-base font-medium hover:bg-blue-700">
+                    <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-base font-medium">
                         Your Profile
                     </a>
-                    <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-base font-medium hover:bg-blue-700">
+                    <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-base font-medium">
                         Change Password
                     </a>
-                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-base font-medium hover:bg-blue-700">
+                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-base font-medium">
                         Sign out
                     </a>
                 </div>
@@ -202,13 +167,13 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white py-4 mt-8">
+    <footer class="py-4 mt-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
-                <div class="text-gray-500 text-sm">
+                <div class="text-sm">
                     &copy; 2025 DynaDash. All rights reserved.
                 </div>
-                <div class="text-gray-500 text-sm">
+                <div class="text-sm">
                     Created by Matthew Haskins, Leo Chen, Jonas Liu, Ziyue Xu
                 </div>
             </div>
