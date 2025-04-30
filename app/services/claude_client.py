@@ -22,22 +22,37 @@ class ClaudeClient:
                 raise ValueError("Anthropic API key is not set")
             
             try:
-                # Try to initialize with just the API key
-                self.client = anthropic.Anthropic(api_key=api_key)
-            except TypeError as e:
-                # Log the error for debugging
-                current_app.logger.error(f"Error initializing Anthropic client: {str(e)}")
+                # For Anthropic SDK v0.7.0, we need to use Anthropic class
+                current_app.logger.info(f"Initializing Anthropic client with version: {anthropic.__version__}")
                 
-                # Check the anthropic version
-                current_app.logger.info(f"Anthropic version: {anthropic.__version__}")
-                
-                # Try alternative initialization based on version
-                if hasattr(anthropic, 'Client'):
-                    # Older versions used Client class
+                # Simple initialization for v0.7.0+
+                if hasattr(anthropic, 'Anthropic'):
+                    # In newer versions, Anthropic() takes only specific parameters
+                    # No 'proxies' parameter is supported - proxy settings should be configured
+                    # through HTTP_PROXY/HTTPS_PROXY environment variables instead
+                    
+                    # Temporarily set environment variable for initialization
+                    original_api_key = os.environ.get('ANTHROPIC_API_KEY')
+                    os.environ['ANTHROPIC_API_KEY'] = api_key
+                    try:
+                        # Initialize with only supported parameters, no 'proxies'
+                        self.client = anthropic.Anthropic()
+                    finally:
+                        # Restore original environment variable
+                        if original_api_key:
+                            os.environ['ANTHROPIC_API_KEY'] = original_api_key
+                        else:
+                            os.environ.pop('ANTHROPIC_API_KEY', None)
+                # Fallback for older versions that use Client class
+                elif hasattr(anthropic, 'Client'):
+                    # Only pass the api_key parameter, not proxies
                     self.client = anthropic.Client(api_key=api_key)
                 else:
-                    # Re-raise if we can't handle it
-                    raise
+                    raise TypeError("Could not find appropriate Anthropic client class")
+                    
+            except Exception as e:
+                current_app.logger.error(f"Error initializing Anthropic client: {str(e)}")
+                raise
     
     def _get_dataset_statistics(self, dataset_id, max_rows=100):
         """Get statistics of the dataset for visualization."""

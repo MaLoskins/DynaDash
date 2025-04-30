@@ -245,11 +245,11 @@ class DataProcessor:
                         if format_found:
                             df_cleaned[col + '_date'] = pd.to_datetime(df_cleaned[col], format=format_found, errors='coerce')
                         else:
-                            # Use infer_datetime_format for better performance when format is unknown
-                            df_cleaned[col + '_date'] = pd.to_datetime(df_cleaned[col], infer_datetime_format=True, errors='coerce')
+                            # Use pandas default parser when format is unknown
+                            df_cleaned[col + '_date'] = pd.to_datetime(df_cleaned[col], errors='coerce')
                     else:
-                        # No sample available, use the default parser with infer_datetime_format
-                        df_cleaned[col + '_date'] = pd.to_datetime(df_cleaned[col], infer_datetime_format=True, errors='coerce')
+                        # No sample available, use the default parser
+                        df_cleaned[col + '_date'] = pd.to_datetime(df_cleaned[col], errors='coerce')
                     
                     # If more than 50% of the values are valid dates, keep the column
                     if df_cleaned[col + '_date'].notna().mean() > 0.5:
