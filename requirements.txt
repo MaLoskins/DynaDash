@@ -20,7 +20,7 @@ pandas>=2.1.1
 numpy>=2.2.0
 
 # API clients
-anthropic==0.7.0
+anthropic==0.50.0
 
 # Utilities
 python-dotenv==1.0.0
