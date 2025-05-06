@@ -5,6 +5,7 @@ from . import data
 from .forms import UploadDatasetForm, ShareDatasetForm
 from ...models import db, Dataset, Share, User
 from ...services.data_processor import DataProcessor
+from ... import cache
 import os
 
 # Initialize the data processor service
@@ -257,6 +258,7 @@ def download(id):
 
 @data.route('/api/v1/datasets', methods=['GET'])
 @login_required
+@cache.cached(timeout=300)  # Cache this endpoint for 5 minutes
 def api_get_datasets():
     """API endpoint to get all datasets for the current user."""
     datasets = Dataset.query.filter_by(user_id=current_user.id).order_by(Dataset.uploaded_at.desc()).all()
@@ -277,6 +279,7 @@ def api_get_datasets():
 
 @data.route('/api/v1/shared-datasets', methods=['GET'])
 @login_required
+@cache.cached(timeout=300)  # Cache this endpoint for 5 minutes
 def api_get_shared_datasets():
     """API endpoint to get all datasets shared with the current user."""
     shared_datasets = db.session.query(Dataset).\

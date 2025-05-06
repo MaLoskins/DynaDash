@@ -4,6 +4,9 @@ from flask_login import LoginManager, current_user
 from flask_socketio import SocketIO
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_caching import Cache
 
 from .models import db, User
 from config import config
@@ -16,6 +19,8 @@ login_manager.login_message = 'Please log in to access this page.'
 socketio = SocketIO()
 csrf = CSRFProtect()
 migrate = Migrate()
+limiter = Limiter(key_func=get_remote_address)
+cache = Cache()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -26,6 +31,13 @@ def create_app(config_name='default'):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+
+    # Add Rate Limiter configuration
+    limiter.init_app(app)
+
+    # Register the API blueprint for JSON-based endpoints
+    from .blueprints.api import api as api_blueprint
+    app.register_blueprint(api_blueprint)
     
     # Initialize extensions with app
     db.init_app(app)
@@ -56,6 +68,11 @@ def create_app(config_name='default'):
     
     # Import socket event handlers
     from . import socket_events
+
+    # Add Caching configuration
+    app.config['CACHE_TYPE'] = 'SimpleCache'  # In-memory cache
+    app.config['CACHE_DEFAULT_TIMEOUT'] = 300  # 300 seconds = 5 minutes
+    cache.init_app(app)
     
     @app.route('/')
     def index():
