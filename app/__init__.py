@@ -1,5 +1,7 @@
 import os
-from flask import Flask, redirect, url_for
+import logging
+from logging.handlers import RotatingFileHandler, SMTPHandler
+from flask import Flask, redirect, url_for, request
 from flask_login import LoginManager, current_user
 from flask_socketio import SocketIO
 from flask_migrate import Migrate
@@ -35,9 +37,21 @@ def create_app(config_name='default'):
     # Add Rate Limiter configuration
     limiter.init_app(app)
 
-    # Register the API blueprint for JSON-based endpoints
-    from .blueprints.api import api as api_blueprint
-    app.register_blueprint(api_blueprint)
+    # Logging setup
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    file_handler = RotatingFileHandler('logs/api.log', maxBytes=10240, backupCount=3)
+    file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s'))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+
+    # Log each incoming request
+    @app.before_request
+    def log_request_info():
+        app.logger.info(
+            f'{request.method} {request.path} from {request.remote_addr} '
+            f'user={getattr(current_user, "id", "anonymous")}'
+        )
     
     # Initialize extensions with app
     db.init_app(app)
