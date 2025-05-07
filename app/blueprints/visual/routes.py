@@ -171,7 +171,10 @@ def share(id):
         return redirect(url_for('visual.share', id=id))
     
     # Get all users this visualization is shared with
-    shared_with = User.query.join(Share).filter(
+    shared_with = db.session.query(User).join(
+        Share,
+        Share.target_id == User.id
+    ).filter(
         Share.owner_id == current_user.id,
         Share.object_type == 'visualisation',
         Share.object_id == visualisation.id
@@ -182,7 +185,8 @@ def share(id):
         title=f'Share Visualization: {visualisation.title}',
         visualisation=visualisation,
         form=form,
-        shared_with=shared_with
+        shared_with=shared_with,
+        dataset=dataset
     )
 
 @visual.route('/unshare/<int:id>/<int:user_id>', methods=['POST'])
