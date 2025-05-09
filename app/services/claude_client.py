@@ -169,7 +169,7 @@ class ClaudeClient:
         
         return prompt.strip()
     
-    def generate_dashboard(self, dataset_id, title, description="", use_thinking=True):
+    def generate_dashboard(self, dataset_id, title, description="", use_thinking=False):
         """Generate a complete dashboard visualization for a dataset using Claude."""
         self._initialize_client()
         
@@ -186,7 +186,7 @@ class ClaudeClient:
                 params = {
                     "model": self.model,
                     "max_tokens": 12000,  # Increased token limit for larger responses
-                    "temperature": 1,     # Keep at 1 as required for thinking mode
+                    "temperature": 1,
                     "system": "You are a data visualization expert that creates beautiful, interactive dashboards using HTML, CSS, and JavaScript. You only respond with complete HTML code for a dashboard, with no explanations or Markdown.",
                     "messages": [
                         {"role": "user", "content": prompt}
@@ -200,7 +200,6 @@ class ClaudeClient:
                 response = self.client.messages.create(**params)
                 
                 # Extract the dashboard HTML from the response
-                # Find the text block in the content (when thinking is enabled, there will be both thinking and text blocks)
                 dashboard_html = None
                 for block in response.content:
                     if hasattr(block, 'text'):
@@ -223,17 +222,14 @@ class ClaudeClient:
                     # Generic code block without language specifier
                     dashboard_html = dashboard_html.replace("```", "").strip()
                 
-                # Fix common corruptions in the generated code
-                dashboard_html = dashboard_html.replace("cdata-disabled-event", "")
-                dashboard_html = dashboard_html.replace("mentidata-disabled-event", "mentions")
-                dashboard_html = dashboard_html.replace("chartCdata-disabled-event", "chartContainers")
-                dashboard_html = dashboard_html.replace("textCdata-disabled-event", "textContent")
+                # Systematically sanitize the HTML/JS output
+                dashboard_html = self._sanitize_dashboard_html(dashboard_html)
                 
                 # Log the first 500 characters of the response for debugging
                 current_app.logger.debug(f"Dashboard HTML (first 500 chars): {dashboard_html[:500]}...")
                 
                 return dashboard_html
-                
+                    
             except Exception as e:
                 if attempt < max_retries - 1:
                     current_app.logger.warning(f"Claude API request failed, retrying in {retry_delay} seconds: {str(e)}")
@@ -243,6 +239,147 @@ class ClaudeClient:
                     current_app.logger.error(f"Claude API request failed after {max_retries} attempts: {str(e)}")
                     raise
     
+    def _sanitize_dashboard_html(self, html_content):
+        """
+        Systematically sanitize the HTML/JavaScript to fix common issues with Claude-generated code.
+        This function handles corruptions and makes the dashboard more robust.
+        """
+        if not html_content:
+            return html_content
+        
+        # Fix corrupted patterns - these appear consistently in thinking-mode generated HTML
+        corrupted_patterns = {
+            "cdata-disabled-event": "",
+            "cdata-disabled": "",
+            "mentidata-disabled-event": "mentions",
+            "chartCdata-disabled-event": "chartContainers",
+            "textCdata-disabled-event": "textContent",
+            "containerCdata": "container",
+        }
+        
+        for pattern, replacement in corrupted_patterns.items():
+            html_content = html_content.replace(pattern, replacement)
+        
+        # Ensure all required JavaScript libraries are present
+        libraries_to_check = [
+            {
+                "reference": "Chart",
+                "src": "https://cdn.jsdelivr.net/npm/chart.js"
+            },
+            {
+                "reference": "d3",
+                "src": "https://d3js.org/d3.v7.min.js"
+            },
+            {
+                "reference": "dayjs",
+                "src": "https://cdn.jsdelivr.net/npm/dayjs@1.10.7/dayjs.min.js"
+            },
+            {
+                "reference": "lodash",
+                "src": "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
+            }
+        ]
+        
+        for lib in libraries_to_check:
+            if lib["reference"] in html_content and lib["src"] not in html_content:
+                script_tag = f'<script src="{lib["src"]}"></script>'
+                # Insert before closing head tag if it exists
+                if '</head>' in html_content:
+                    html_content = html_content.replace('</head>', f'{script_tag}\n</head>')
+                # Otherwise insert at the beginning of the document
+                else:
+                    html_content = f'{script_tag}\n{html_content}'
+        
+        # Add safety checks to JavaScript to prevent errors from undefined objects
+        js_safety_patterns = [
+            ("Chart.defaults", "Chart && Chart.defaults"),
+            ("d3.select", "d3 && d3.select"),
+            ("dayjs(", "dayjs && dayjs("),
+            ("_.map", "_ && _.map")
+        ]
+        
+        # Lists don't have .items() method, so iterate through directly
+        for pattern_tuple in js_safety_patterns:
+            pattern, replacement = pattern_tuple
+            html_content = html_content.replace(pattern, replacement)
+        
+        # Find and fix any broken event listeners
+        broken_event_patterns = [
+            # Fix broken event listeners
+            ("document.addEvent", "document.addEventListener"),
+            ("window.addEvent", "window.addEventListener")
+        ]
+        
+        # Lists don't have .items() method, so iterate through directly
+        for pattern_tuple in broken_event_patterns:
+            pattern, replacement = pattern_tuple
+            html_content = html_content.replace(pattern, replacement)
+        
+        # Ensure proper HTML structure
+        if not html_content.strip().startswith("<!DOCTYPE"):
+            html_content = "<!DOCTYPE html>\n" + html_content
+        
+        if "<html" not in html_content:
+            html_content = html_content.replace("<!DOCTYPE html>", "<!DOCTYPE html>\n<html>")
+            if "</html>" not in html_content:
+                html_content += "\n</html>"
+        
+        if "<head>" not in html_content:
+            html_content = html_content.replace("<html>", "<html>\n<head>\n</head>")
+        
+        if "<body>" not in html_content:
+            if "</head>" in html_content:
+                html_content = html_content.replace("</head>", "</head>\n<body>")
+                if "</body>" not in html_content and "</html>" in html_content:
+                    html_content = html_content.replace("</html>", "</body>\n</html>")
+        
+        # Add a basic error handling mechanism for the dashboard
+        error_handling_script = """
+    <script>
+    // Add basic error handling to prevent dashboard from getting stuck
+    window.addEventListener('error', function(e) {
+        console.error('Dashboard error:', e.message);
+        // If the page is still showing loading after errors, try to hide the loading indicator
+        setTimeout(function() {
+            var loadingElements = document.querySelectorAll('.loading, #loading, [id*="loading"], [class*="loading"]');
+            loadingElements.forEach(function(el) {
+                el.style.display = 'none';
+            });
+        }, 5000);
+    });
+
+    // Ensure all charts are properly initialized
+    document.addEventListener('DOMContentLoaded', function() {
+        // Force charts to render after a delay
+        setTimeout(function() {
+            if (typeof Chart !== 'undefined') {
+                // Force all canvases to update
+                var canvases = document.querySelectorAll('canvas');
+                canvases.forEach(function(canvas) {
+                    if (canvas.chart) {
+                        try {
+                            canvas.chart.update();
+                        } catch (e) {
+                            console.warn('Could not update chart:', e);
+                        }
+                    }
+                });
+            }
+        }, 1000);
+    });
+    </script>
+    """
+        
+        # Add the error handling script before the closing body tag
+        if "</body>" in html_content:
+            html_content = html_content.replace("</body>", error_handling_script + "\n</body>")
+        else:
+            # If there's no body tag, add it at the end
+            html_content += "\n" + error_handling_script
+        
+        return html_content
+        
+        return html_content
     # Keep the legacy method for backward compatibility if needed
     def generate_visualization(self, dataset_id, title):
         """Legacy method - now redirects to generate_dashboard."""

@@ -986,9 +986,10 @@ p.small, .text-sm {
     padding: 2rem;
 }
 
-/* Forms and inputs */
+/* Forms and inputs - Enhanced with depth and polish */
 input, select, textarea {
     background-color: var(--dark-bg) !important;
+    background-image: linear-gradient(to bottom, rgba(18, 18, 18, 0.8), var(--dark-bg)) !important;
     border: 1px solid var(--border-color) !important;
     color: var(--text-color) !important;
     padding: 0.625rem 0.875rem !important;
@@ -996,52 +997,196 @@ input, select, textarea {
     border-radius: var(--radius-md);
     font-size: 0.95rem;
     letter-spacing: var(--letter-spacing-normal);
-    box-shadow: var(--shadow-inset);
+    box-shadow:
+        var(--shadow-inset),
+        inset 0 1px 1px rgba(0, 0, 0, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+    width: 100%;
+    transform: translateZ(0); /* Hardware acceleration for smoother animations */
+}
+
+input:before, select:before, textarea:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+    pointer-events: none;
 }
 
 input:hover, select:hover, textarea:hover {
     border-color: var(--border-color-light) !important;
     background-color: var(--surface-1) !important;
+    box-shadow:
+        var(--shadow-inset-deep),
+        0 1px 0 rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+}
+
+input:hover:before, select:hover:before, textarea:hover:before {
+    opacity: 1;
 }
 
 input:focus, select:focus, textarea:focus {
     border-color: var(--magenta-primary) !important;
-    box-shadow: 0 0 0 3px var(--magenta-glow), var(--shadow-inset) !important;
+    box-shadow:
+        0 0 0 2px var(--magenta-glow),
+        var(--shadow-inset) !important;
     background-color: var(--surface-1) !important;
     outline: none;
+    transform: translateY(-1px);
+    transition: all var(--transition-bounce);
 }
 
-/* Form groups with improved spacing */
+input:focus:before, select:focus:before, textarea:focus:before {
+    opacity: 0;
+}
+
+input:disabled, select:disabled, textarea:disabled {
+    background-color: var(--darker-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-disabled) !important;
+    cursor: not-allowed;
+    opacity: 0.75;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Form groups with improved spacing and organization */
 .form-group {
     margin-bottom: 1.5rem;
+    position: relative;
 }
 
-/* Form labels with refined styling */
+/* Enhanced Form labels styling */
 label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     font-weight: var(--font-weight-medium);
     color: var(--text-color) !important;
     letter-spacing: var(--letter-spacing-wide);
-    font-size: 0.9rem;
+    font-size: 0.925rem;
+    transition: all var(--transition-bounce);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    position: relative;
+    padding-left: 0.5rem;
+    background: linear-gradient(90deg,
+        rgba(232, 62, 140, 0.05) 0%,
+        transparent 50%);
+    border-radius: var(--radius-sm);
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
 }
 
-/* Placeholder text */
+label:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 1em;
+    background: var(--magenta-primary);
+    border-radius: var(--radius-sm);
+    opacity: 0.7;
+    transition: all var(--transition-bounce);
+}
+
+label:hover {
+    color: var(--magenta-lighter) !important;
+    transform: translateX(2px);
+}
+
+label:hover:before {
+    background: var(--magenta-light);
+    box-shadow: 0 0 8px var(--magenta-glow);
+    height: 1.2em;
+    opacity: 1;
+}
+
+/* Subtle label animation when input is focused */
+input:focus + label,
+select:focus + label,
+textarea:focus + label {
+    color: var(--magenta-light) !important;
+    transform: translateX(4px);
+    background: linear-gradient(90deg,
+        rgba(232, 62, 140, 0.1) 0%,
+        transparent 70%);
+}
+
+input:focus + label:before,
+select:focus + label:before,
+textarea:focus + label:before {
+    height: 1.4em;
+    width: 4px;
+    background: var(--gradient-magenta);
+    box-shadow: 0 0 10px var(--magenta-glow);
+}
+
+/* Required field indicator */
+label.required:after {
+    content: '*';
+    color: var(--magenta-light);
+    margin-left: 0.25rem;
+    font-size: 1.1em;
+    text-shadow: 0 0 5px var(--magenta-glow-faint);
+    animation: pulseGlow 2s infinite alternate ease-in-out;
+}
+
+/* Placeholder text enhancements */
 ::placeholder {
-    color: var(--text-secondary) !important;
+    color: var(--text-tertiary) !important;
     opacity: 0.7 !important;
+    transition: all var(--transition-normal);
+    font-style: italic;
+    font-size: 0.95em;
 }
 
-/* Auth form inputs */
+input:focus::placeholder,
+textarea:focus::placeholder {
+    opacity: 0.4 !important;
+    transform: translateX(8px);
+    color: var(--text-disabled) !important;
+    font-size: 0.9em;
+}
+
+/* Create a subtle floating placeholder effect */
+.form-field {
+    position: relative;
+}
+
+.form-field.has-value label,
+.form-field input:focus ~ label,
+.form-field textarea:focus ~ label,
+.form-field select:focus ~ label {
+    font-size: 0.8rem;
+    transform: translateY(-150%);
+    color: var(--magenta-light) !important;
+    background: transparent;
+}
+
+/* Auth form inputs with consistent style */
 .appearance-none {
     background-color: var(--dark-bg) !important;
     border-color: var(--border-color) !important;
     color: var(--text-color) !important;
+    box-shadow:
+        var(--shadow-inset),
+        inset 0 1px 1px rgba(0, 0, 0, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .appearance-none:focus {
     border-color: var(--magenta-primary) !important;
-    box-shadow: 0 0 0 2px var(--magenta-glow) !important;
+    box-shadow: 0 0 0 2px var(--magenta-glow), var(--shadow-inset) !important;
+    transform: translateY(-1px);
 }
 
 .border-gray-300 {
@@ -1052,34 +1197,37 @@ label {
     border-radius: 0.375rem !important;
 }
 
-/* Form labels */
-label {
-    color: var(--text-color) !important;
-    margin-bottom: 0.25rem;
-    display: block;
-}
-
-/* Improve form layout spacing */
+/* Improve form layout spacing and structure */
 .form-group {
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    position: relative;
 }
 
-/* Buttons */
+/* Buttons - Enhanced with depth, animations and visual appeal */
 .btn, button[type="submit"], .bg-blue-600, .bg-blue-500, .bg-blue-700 {
     background-color: var(--magenta-primary) !important;
     background-image: var(--gradient-magenta) !important;
     color: var(--text-color) !important;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-bounce);
     border: none;
-    padding: 0.625rem 1.5rem;
+    padding: 0.675rem 1.75rem;
     border-radius: var(--radius-md);
     font-weight: var(--font-weight-medium);
     letter-spacing: var(--letter-spacing-wide);
     position: relative;
     overflow: hidden;
-    box-shadow: var(--shadow-sm);
+    box-shadow:
+        var(--shadow-sm),
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transform-origin: center;
+    backface-visibility: hidden; /* Prevents flicker during animations */
+    z-index: 1;
 }
 
+/* Highlight effect overlays */
 .btn:before, button[type="submit"]:before, .bg-blue-600:before, .bg-blue-500:before, .bg-blue-700:before {
     content: '';
     position: absolute;
@@ -1087,44 +1235,152 @@ label {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
+    background: linear-gradient(to bottom,
+        rgba(255,255,255,0.18) 0%,
+        rgba(255,255,255,0.08) 40%,
+        rgba(0,0,0,0.08) 60%,
+        rgba(0,0,0,0.15) 100%);
+    opacity: 0.85;
+    transition: opacity var(--transition-normal), transform var(--transition-bounce);
+    z-index: -1;
 }
 
+/* Button glow effect */
+.btn:after, button[type="submit"]:after, .bg-blue-600:after, .bg-blue-500:after, .bg-blue-700:after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: var(--magenta-glow-faint);
+    border-radius: calc(var(--radius-md) + 3px);
+    z-index: -2;
+    opacity: 0;
+    transition: opacity var(--transition-normal), transform var(--transition-bounce);
+    transform: scale(0.95);
+}
+
+/* Hover state - lift, glow, and color shift */
 .btn:hover, button[type="submit"]:hover, .bg-blue-600:hover, .bg-blue-500:hover, .bg-blue-700:hover {
     background-color: var(--magenta-light) !important;
-    box-shadow: var(--shadow-glow), var(--shadow-md);
+    background-image: linear-gradient(135deg, var(--magenta-light) 0%, var(--magenta-primary) 100%) !important;
+    box-shadow:
+        var(--shadow-glow),
+        var(--shadow-md),
+        inset 0 1px 2px rgba(255, 255, 255, 0.3);
     cursor: pointer;
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.04);
+    letter-spacing: var(--letter-spacing-wide);
 }
 
 .btn:hover:before, button[type="submit"]:hover:before, .bg-blue-600:hover:before, .bg-blue-500:hover:before, .bg-blue-700:hover:before {
     opacity: 1;
+    transform: translateY(-2px);
 }
 
+.btn:hover:after, button[type="submit"]:hover:after, .bg-blue-600:hover:after, .bg-blue-500:hover:after, .bg-blue-700:hover:after {
+    opacity: 0.7;
+    animation: buttonGlow 2s infinite alternate ease-in-out;
+    transform: scale(1.03);
+}
+
+@keyframes buttonGlow {
+    0% { opacity: 0.4; box-shadow: 0 0 5px var(--magenta-glow-faint); }
+    50% { opacity: 0.7; box-shadow: 0 0 15px var(--magenta-glow); }
+    100% { opacity: 0.9; box-shadow: 0 0 20px var(--magenta-glow-strong); }
+}
+
+/* Active state - press down effect */
 .btn:active, button[type="submit"]:active, .bg-blue-600:active, .bg-blue-500:active, .bg-blue-700:active {
-    transform: translateY(1px);
-    box-shadow: var(--shadow-glow-subtle);
-    transition: all var(--transition-fast);
+    transform: translateY(2px) scale(0.97);
+    background-image: linear-gradient(135deg, var(--magenta-dark) 0%, var(--magenta-primary) 100%) !important;
+    box-shadow:
+        var(--shadow-glow-subtle),
+        inset 0 3px 5px rgba(0, 0, 0, 0.25);
+    transition: all 0.1s ease-out;
 }
 
+.btn:active:before, button[type="submit"]:active:before, .bg-blue-600:active:before, .bg-blue-500:active:before, .bg-blue-700:active:before {
+    opacity: 0.5;
+    transform: translateY(0);
+}
+
+/* Focus state - accessibility ring */
 .btn:focus, button[type="submit"]:focus, .bg-blue-600:focus, .bg-blue-500:focus, .bg-blue-700:focus {
     outline: none;
-    box-shadow: 0 0 0 3px var(--magenta-glow);
+    box-shadow:
+        0 0 0 3px var(--magenta-glow),
+        var(--shadow-sm),
+        inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
-/* Button variations */
+/* Button with icon spacing */
+.btn svg, button[type="submit"] svg, .bg-blue-600 svg, .bg-blue-500 svg, .bg-blue-700 svg {
+    margin-right: 0.5rem;
+    transition: transform var(--transition-bounce);
+}
+
+.btn:hover svg, button[type="submit"]:hover svg, .bg-blue-600:hover svg, .bg-blue-500:hover svg, .bg-blue-700:hover svg {
+    transform: scale(1.15);
+}
+
+/* Loading state for buttons */
+.btn.loading, button[type="submit"].loading, .bg-blue-600.loading, .bg-blue-500.loading, .bg-blue-700.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.btn.loading:after, button[type="submit"].loading:after, .bg-blue-600.loading:after, .bg-blue-500.loading:after, .bg-blue-700.loading:after {
+    content: '';
+    position: absolute;
+    top: calc(50% - 0.5em);
+    left: calc(50% - 0.5em);
+    width: 1em;
+    height: 1em;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+    opacity: 1;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Disabled state */
+.btn:disabled, button[type="submit"]:disabled, .bg-blue-600:disabled, .bg-blue-500:disabled, .bg-blue-700:disabled {
+    background-image: linear-gradient(135deg, var(--surface-3), var(--surface-2)) !important;
+    color: var(--text-disabled) !important;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.7;
+}
+
+/* Button variations with enhanced styling */
 .btn-secondary {
     background-image: linear-gradient(135deg, var(--surface-2), var(--surface-3)) !important;
     background-color: var(--surface-2) !important;
     color: var(--text-color) !important;
     border: 1px solid var(--border-color);
+    box-shadow:
+        var(--shadow-xs),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .btn-secondary:hover {
     background-color: var(--surface-3) !important;
+    background-image: linear-gradient(135deg, var(--surface-2) 30%, var(--surface-3) 100%) !important;
     box-shadow: var(--shadow-md);
+    border-color: var(--border-color-light);
+}
+
+.btn-secondary:active {
+    background-image: linear-gradient(135deg, var(--surface-3), var(--surface-2)) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .btn-outline {
@@ -1132,45 +1388,503 @@ label {
     background-image: none !important;
     border: 2px solid var(--magenta-primary);
     color: var(--magenta-primary) !important;
+    box-shadow: none;
+    text-shadow: none;
+    position: relative;
+    z-index: 1;
+}
+
+.btn-outline:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--magenta-primary);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+    z-index: -1;
+    border-radius: calc(var(--radius-md) - 2px);
 }
 
 .btn-outline:hover {
-    background-color: rgba(232, 62, 140, 0.1) !important;
-    color: var(--magenta-light) !important;
+    color: var(--text-color) !important;
     border-color: var(--magenta-light);
+    box-shadow: var(--shadow-glow-faint);
+    transform: translateY(-1px);
 }
 
-/* Ensure checkbox has correct color */
-[type="checkbox"] {
-    color: var(--magenta-primary) !important;
-    border-color: var(--border-color) !important;
+.btn-outline:hover:before {
+    opacity: 0.15;
 }
 
-[type="checkbox"]:checked {
-    background-color: var(--magenta-primary) !important;
+.btn-outline:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+.btn-small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+.btn-large {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* Floating action button */
+.btn-float {
+    border-radius: var(--radius-full);
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-float:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
+
+/* Enhanced checkbox and radio buttons */
+input[type="checkbox"], input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 2px solid var(--border-color-light);
+    background-color: var(--dark-bg);
+    position: relative;
+    cursor: pointer;
+    margin-right: 0.625rem;
+    vertical-align: middle;
+    transition: all var(--transition-bounce);
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.15),
+        0 1px 0 rgba(255, 255, 255, 0.05);
+    background-image: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0.2),
+        transparent 60%);
+}
+
+input[type="checkbox"] {
+    border-radius: var(--radius-sm);
+}
+
+input[type="radio"] {
+    border-radius: var(--radius-full);
+}
+
+input[type="checkbox"]:hover, input[type="radio"]:hover {
+    border-color: var(--magenta-primary);
+    background-color: var(--surface-1);
+    transform: scale(1.08);
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.1),
+        0 0 5px var(--magenta-glow-faint);
+}
+
+input[type="checkbox"]:active, input[type="radio"]:active {
+    transform: scale(0.92);
+}
+
+input[type="checkbox"]:checked, input[type="radio"]:checked {
+    background-color: var(--magenta-primary);
+    border-color: var(--magenta-light);
+    box-shadow:
+        0 0 8px var(--magenta-glow-faint),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+        inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    background-image: linear-gradient(to bottom,
+        var(--magenta-light) 0%,
+        var(--magenta-primary) 100%);
+}
+
+input[type="checkbox"]:checked:after {
+    content: '';
+    position: absolute;
+    top: 0.15rem;
+    left: 0.35rem;
+    width: 0.4rem;
+    height: 0.75rem;
+    border: solid white;
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg);
+    animation: checkmarkAppear 0.2s var(--transition-bounce);
+}
+
+@keyframes checkmarkAppear {
+    0% { opacity: 0; transform: rotate(45deg) scale(0.5); }
+    50% { opacity: 1; transform: rotate(45deg) scale(1.3); }
+    100% { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+
+input[type="radio"]:checked:after {
+    content: '';
+    position: absolute;
+    top: calc(50% - 0.275rem);
+    left: calc(50% - 0.275rem);
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background-color: white;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
+    animation: radioAppear 0.3s var(--transition-bounce);
+}
+
+@keyframes radioAppear {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.4); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+input[type="checkbox"]:focus, input[type="radio"]:focus {
+    outline: none;
+    border-color: var(--magenta-light);
+    box-shadow: 0 0 0 3px var(--magenta-glow-faint);
+}
+
+/* Make checkbox labels align properly and enhance their appearance */
+input[type="checkbox"] + label,
+input[type="radio"] + label {
+    display: inline-block;
+    padding-left: 0.25rem;
+    vertical-align: middle;
+    transition: all var(--transition-bounce);
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+input[type="checkbox"]:hover + label,
+input[type="radio"]:hover + label {
+    color: var(--magenta-lighter);
+}
+
+input[type="checkbox"]:checked + label,
+input[type="radio"]:checked + label {
+    color: var(--magenta-light);
+    text-shadow: 0 0 5px var(--magenta-glow-faint);
+}
+
+/* Checkbox and radio button container for better alignment */
+.checkbox-container,
+.radio-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-normal);
+}
+
+.checkbox-container:hover,
+.radio-container:hover {
+    background-color: rgba(232, 62, 140, 0.05);
+}
+
+/* Enhanced select dropdowns */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e83e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1em !important;
+    padding-right: 2.75rem !important;
+    cursor: pointer;
+    background-color: var(--dark-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-color) !important;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-bounce);
+    z-index: 1;
+    position: relative;
+}
+
+select:hover {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff4fa3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    border-color: var(--border-color-light) !important;
+    background-color: var(--surface-1) !important;
+}
+
+select:focus {
     border-color: var(--magenta-primary) !important;
+    box-shadow: 0 0 0 3px var(--magenta-glow-faint) !important;
+    outline: none;
 }
 
-/* Apply glow effect to submit buttons */
+/* Custom select styling for enhanced appearance */
+.custom-select {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.custom-select select {
+    width: 100%;
+}
+
+.custom-select:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2.5rem;
+    height: 100%;
+    background-color: rgba(232, 62, 140, 0.1);
+    pointer-events: none;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    transition: all var(--transition-normal);
+}
+
+.custom-select:hover:after {
+    background-color: rgba(232, 62, 140, 0.2);
+}
+
+/* Form validation feedback enhancements */
+.is-valid, input.is-valid, select.is-valid, textarea.is-valid {
+    border-color: var(--success) !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2328a745' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='20 6 9 17 4 12'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1em !important;
+    padding-right: 2.5rem !important;
+    box-shadow:
+        0 0 0 1px var(--success-light),
+        inset 0 1px 1px rgba(0, 0, 0, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.is-invalid, input.is-invalid, select.is-invalid, textarea.is-invalid {
+    border-color: var(--danger) !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dc3545' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cline x1='18' y1='6' x2='6' y2='18'%3e%3c/line%3e%3cline x1='6' y1='6' x2='18' y2='18'%3e%3c/line%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1em !important;
+    padding-right: 2.5rem !important;
+    box-shadow:
+        0 0 0 1px var(--danger-light),
+        inset 0 1px 1px rgba(0, 0, 0, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Validation message styling */
+.invalid-feedback, .text-red-500 {
+    color: var(--danger-light) !important;
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+    display: block;
+    font-weight: var(--font-weight-medium);
+    animation: fadeInUp 0.3s ease-out;
+    background-color: rgba(220, 53, 69, 0.07);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--danger);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.invalid-feedback:before, .text-red-500:before {
+    content: '⚠️';
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.valid-feedback {
+    color: var(--success-light) !important;
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+    display: block;
+    animation: fadeInUp 0.3s ease-out;
+    background-color: rgba(40, 167, 69, 0.07);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--success);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.valid-feedback:before {
+    content: '✓';
+    margin-right: 0.5rem;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    70% {
+        transform: translateY(-2px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Form field with validation visual cues */
+.form-field.error label {
+    color: var(--danger-light) !important;
+}
+
+.form-field.error label:before {
+    background: var(--danger);
+}
+
+.form-field.success label {
+    color: var(--success-light) !important;
+}
+
+.form-field.success label:before {
+    background: var(--success);
+}
+
+/* Submit buttons with enhanced animations */
 [type="submit"] {
     background-color: var(--magenta-primary) !important;
     background-image: var(--gradient-magenta) !important;
     color: var(--text-color) !important;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-bounce);
     font-weight: var(--font-weight-medium);
+    position: relative;
+    overflow: hidden;
 }
 
 [type="submit"]:hover {
     background-color: var(--magenta-light) !important;
-    background-image: var(--gradient-magenta) !important;
-    box-shadow: var(--shadow-glow), var(--shadow-md);
-    transform: translateY(-1px);
+    background-image: linear-gradient(135deg, var(--magenta-light) 0%, var(--magenta-primary) 100%) !important;
+    box-shadow:
+        var(--shadow-glow),
+        var(--shadow-md),
+        inset 0 1px 2px rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px) scale(1.03);
 }
 
 [type="submit"]:active {
-    transform: translateY(1px);
+    transform: translateY(1px) scale(0.98);
     box-shadow: var(--shadow-glow-subtle);
-    transition: all var(--transition-fast);
+    transition: all 0.1s ease-out;
+}
+
+/* Submit button shimmer effect */
+[type="submit"]:after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: rotate(30deg);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+[type="submit"]:hover:after {
+    animation: shimmer 1.5s ease-in-out;
+}
+
+@keyframes shimmer {
+    0% {
+        opacity: 0;
+        transform: rotate(30deg) translateX(-150%);
+    }
+    20% {
+        opacity: 0.3;
+    }
+    100% {
+        opacity: 0;
+        transform: rotate(30deg) translateX(150%);
+    }
+}
+
+/* Form elements responsiveness */
+@media (max-width: 768px) {
+    input, select, textarea {
+        font-size: 1rem; /* Slightly larger on mobile for better touch targets */
+        padding: 0.75rem 1.15rem; /* More padding on mobile */
+    }
+    
+    label {
+        font-size: 1rem;
+        margin-bottom: 0.625rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .btn, button[type="submit"] {
+        width: 100%; /* Full width buttons on mobile */
+        padding: 0.85rem 1.25rem;
+        font-size: 1.05rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    input[type="checkbox"], input[type="radio"] {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+    
+    input[type="checkbox"]:checked:after {
+        top: 0.25rem;
+        left: 0.45rem;
+        width: 0.45rem;
+        height: 0.8rem;
+        border-width: 0 3px 3px 0;
+    }
+    
+    input[type="radio"]:checked:after {
+        top: calc(50% - 0.3rem);
+        left: calc(50% - 0.3rem);
+        width: 0.6rem;
+        height: 0.6rem;
+    }
+    
+    .invalid-feedback, .valid-feedback, .text-red-500 {
+        font-size: 0.9rem;
+        padding: 0.6rem 0.8rem;
+    }
+    
+    /* Stack form fields in columns on very small screens */
+    @media (max-width: 480px) {
+        .flex-row {
+            flex-direction: column;
+        }
+        
+        .form-inline .form-group {
+            width: 100%;
+            margin-right: 0;
+        }
+        
+        /* Add more space between stacked form elements */
+        input, select, textarea {
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn + .btn {
+            margin-top: 0.75rem;
+        }
+    }
 }
 
 /* Tables */
