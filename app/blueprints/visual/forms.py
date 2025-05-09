@@ -11,18 +11,7 @@ class GenerateVisualisationForm(FlaskForm):
     description = TextAreaField('Description (Optional)', validators=[
         Length(max=500)
     ])
-    chart_type = SelectField('Chart Type', validators=[DataRequired()], choices=[
-        ('bar', 'Bar Chart'),
-        ('line', 'Line Chart'),
-        ('pie', 'Pie Chart'),
-        ('scatter', 'Scatter Plot'),
-        ('histogram', 'Histogram'),
-        ('heatmap', 'Heatmap'),
-        ('boxplot', 'Box Plot'),
-        ('area', 'Area Chart'),
-        ('bubble', 'Bubble Chart'),
-        ('radar', 'Radar Chart')
-    ])
+    # Chart type selection removed; Claude now selects visualization type autonomously.
     submit = SubmitField('Generate Visualization')
 
 class ShareVisualisationForm(FlaskForm):
