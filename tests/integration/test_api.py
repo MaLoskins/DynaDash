@@ -246,6 +246,62 @@ class APITestCase(unittest.TestCase):
         # Note: This test will fail in a real environment because it requires the Claude API
         # In a real test, we would mock the Claude API
         self.assertEqual(response.status_code, 500)  # Expected to fail without Claude API
+    def test_generate_visualisation_required_params_only(self):
+        """Test POST /api/v1/generate with only required params (no chart_type)."""
+        dataset = Dataset(
+            user_id=self.user.id,
+            filename='test_dataset.csv',
+            original_filename='test_dataset.csv',
+            file_path='/path/to/test_dataset.csv',
+            file_type='csv',
+            n_rows=100,
+            n_columns=5,
+            is_public=False
+        )
+        db.session.add(dataset)
+        db.session.commit()
+        response = self.client.post('/visual/api/v1/generate', json={
+            'dataset_id': dataset.id,
+            'title': 'Minimal Visualisation'
+        })
+        # Should succeed or fail with 500 if Claude API is not mocked, but not 400
+        self.assertIn(response.status_code, [200, 500])
+
+    def test_generate_visualisation_missing_title(self):
+        """Test POST /api/v1/generate missing title param (should 400)."""
+        dataset = Dataset(
+            user_id=self.user.id,
+            filename='test_dataset.csv',
+            original_filename='test_dataset.csv',
+            file_path='/path/to/test_dataset.csv',
+            file_type='csv',
+            n_rows=100,
+            n_columns=5,
+            is_public=False
+        )
+        db.session.add(dataset)
+        db.session.commit()
+        response = self.client.post('/visual/api/v1/generate', json={
+            'dataset_id': dataset.id
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b'Dataset ID and title are required', response.data)
+
+    def test_generate_visualisation_missing_dataset_id(self):
+        """Test POST /api/v1/generate missing dataset_id param (should 400)."""
+        response = self.client.post('/visual/api/v1/generate', json={
+            'title': 'No Dataset'
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b'Dataset ID and title are required', response.data)
+
+    def test_generate_visualisation_invalid_dataset_id(self):
+        """Test POST /api/v1/generate with invalid dataset_id (should 404)."""
+        response = self.client.post('/visual/api/v1/generate', json={
+            'dataset_id': 99999,
+            'title': 'Invalid Dataset'
+        })
+        self.assertEqual(response.status_code, 404)
 
 if __name__ == '__main__':
     unittest.main()
