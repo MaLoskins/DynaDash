@@ -6,6 +6,7 @@ from . import visual
 from ...models import db, Dataset, Visualisation, Share, User
 from .forms import GenerateVisualisationForm, ShareVisualisationForm
 from ...services.claude_client import ClaudeClient
+from ... import cache
 
 # Initialize the Claude client service
 claude_client = ClaudeClient()
@@ -170,7 +171,10 @@ def share(id):
         return redirect(url_for('visual.share', id=id))
     
     # Get all users this visualization is shared with
-    shared_with = User.query.join(Share).filter(
+    shared_with = db.session.query(User).join(
+        Share,
+        Share.target_id == User.id
+    ).filter(
         Share.owner_id == current_user.id,
         Share.object_type == 'visualisation',
         Share.object_id == visualisation.id
@@ -181,7 +185,8 @@ def share(id):
         title=f'Share Visualization: {visualisation.title}',
         visualisation=visualisation,
         form=form,
-        shared_with=shared_with
+        shared_with=shared_with,
+        dataset=dataset
     )
 
 @visual.route('/unshare/<int:id>/<int:user_id>', methods=['POST'])
@@ -235,6 +240,7 @@ def delete(id):
 
 @visual.route('/api/v1/visualisations', methods=['GET'])
 @login_required
+@cache.cached(timeout=300)  # Cache for 5 minutes
 def api_get_visualisations():
     """API endpoint to get all visualizations for the current user."""
     visualisations = Visualisation.query.join(Dataset).filter(
@@ -256,6 +262,7 @@ def api_get_visualisations():
 
 @visual.route('/api/v1/shared-visualisations', methods=['GET'])
 @login_required
+@cache.cached(timeout=300)  # Cache for 5 minutes
 def api_get_shared_visualisations():
     """API endpoint to get all visualizations shared with the current user."""
     shared_visualisations = db.session.query(Visualisation).\
@@ -336,6 +343,7 @@ def api_generate():
 
 @visual.route('/api/v1/visualisations/<int:id>', methods=['GET'])
 @login_required
+@cache.cached(timeout=120)  # Cache for 2 minutes
 def api_get_visualisation(id):
     """API endpoint to get a specific visualization."""
     visualisation = Visualisation.query.get_or_404(id)
