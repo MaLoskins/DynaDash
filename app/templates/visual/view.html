@@ -2,6 +2,13 @@
 
 {% block title %}{{ visualisation.title }} - DynaDash{% endblock %}
 
+{% block head %}
+{{ super() }}
+<!-- Pre-load visualization libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,16 +88,28 @@
             </div>
             
             <!-- Visualization Content -->
-            <div class="lg:col-span-4"> <!-- Made wider -->
+            <div class="lg:col-span-3">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <div class="p-4 border-b border-gray-200">
                         <h2 class="text-lg font-semibold text-gray-800">Visualization</h2>
                     </div>
-                    <div class="p-4 bg-gray-50 min-h-[500px] overflow-auto"> <!-- Taller, scrollable -->
-                        {{ vis_html }}
+                    <div class="p-4 bg-gray-50 min-h-[500px] overflow-auto" id="visualization-wrapper">
+                        <!-- Debug info (only visible during development) -->
+                        {% if debug %}
+                        <details style="margin-bottom: 20px;">
+                            <summary>Debug Info</summary>
+                            <div class="bg-gray-100 p-4 rounded">
+                                <p class="mb-2 font-bold">Raw Visualization HTML:</p>
+                                <pre style="white-space: pre-wrap; font-size: 12px; overflow-x: auto;">{{ vis_html }}</pre>
+                            </div>
+                        </details>
+                        {% endif %}
+                        
+                        <!-- Actual visualization -->
+                        {{ vis_html|safe }}
                     </div>
                 </div>
-            </div>            
+            </div>
         </div>
     </div>
 </div>
@@ -99,15 +118,34 @@
 {% block scripts %}
 <script>
     $(document).ready(function() {
-        // Log visualization content for debugging
-        console.log("Visualization content loaded");
+        console.log("Visualization page loaded");
+        
+        // Ensure all chart elements are initialized
+        setTimeout(function() {
+            if (typeof Chart !== 'undefined') {
+                console.log("Chart.js is loaded and available");
+                
+                // Force initialization of any Chart.js canvas elements that might not have initialized
+                const canvasElements = document.querySelectorAll('canvas');
+                if (canvasElements.length > 0) {
+                    console.log(`Found ${canvasElements.length} canvas elements`);
+                    
+                    // Try to trigger a window resize to help force charts to render
+                    const resizeEvent = window.document.createEvent('UIEvents');
+                    resizeEvent.initUIEvent('resize', true, false, window, 0);
+                    window.dispatchEvent(resizeEvent);
+                }
+            } else {
+                console.warn("Chart.js is not loaded");
+            }
+        }, 500);
         
         // Download visualization
         $('#download-btn').on('click', function() {
             // Create a temporary link
             const link = document.createElement('a');
             
-            // Get the visualization HTML - find the visualization container
+            // Get the visualization HTML
             const visualizationContainer = document.querySelector('#visualization-container');
             let visualizationHtml = '';
             
@@ -121,15 +159,23 @@
                 console.log("Using parent container for download:", visualizationHtml);
             }
             
+            // Extract script tags to ensure they're placed correctly
+            const scriptRegex = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
+            const scriptTags = visualizationHtml.match(scriptRegex) || [];
+            
+            // Remove script tags from original HTML
+            let contentWithoutScripts = visualizationHtml.replace(scriptRegex, '');
+            
             // Create a Blob with the HTML content
             const blob = new Blob([
                 '<!DOCTYPE html><html><head><title>{{ visualisation.title }}</title>',
-                '<script src="https://cdn.tailwindcss.com"><\/script>',
-                '<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>',
-                '<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.0.0/d3.min.js"><\/script>',
-                '<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>',
+                '<meta charset="UTF-8">',
+                '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>',
+                '<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>',
+                '<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>',
                 '</head><body>',
-                visualizationHtml,
+                contentWithoutScripts,
+                ...scriptTags, // Add scripts at the end of body
                 '</body></html>'
             ], { type: 'text/html' });
             

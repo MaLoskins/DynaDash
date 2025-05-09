@@ -123,7 +123,7 @@ class ClaudeClient:
             
             stats["column_stats"][col] = col_stats
 
-            # NEW: detect “grouping” columns  (re-used values < total rows)
+            # NEW: detect "grouping" columns  (re-used values < total rows)
             nunique = df[col].nunique(dropna=True)
             if nunique < sampled_rows:                      # repeats exist → groups
                 top_groups = (
@@ -170,10 +170,11 @@ class ClaudeClient:
         11. Do not include <html>, <head>, <body> tags or any external script loading
         12. Include all necessary JavaScript libraries as CDN links inside the visualization container
         13. Make sure to properly initialize and render the chart
+        14. Ensure all script tags are placed in the correct order - libraries first, then visualization code
 
         Example format of your response:
         <div id="visualization-container">
-         <!-- Chart.js (core) --> <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script> <!-- Matrix plugin for Chart.js v4 --> <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@3.0.0/dist/chartjs-chart-matrix.min.js"></script>
+         <!-- Chart.js (core) --> <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
           <canvas id="myChart"></canvas>
           <script>
             const ctx = document.getElementById('myChart').getContext('2d');
@@ -228,11 +229,11 @@ class ClaudeClient:
                         lines = lines[:-1]
                     visualization_code = "\n".join(lines)
                 
-                # Extract only the visualization container div
-                import re
-                
                 # Log the original visualization code for debugging
                 current_app.logger.debug(f"Original visualization code from Claude: {visualization_code}")
+                
+                # Extract only the visualization container div
+                import re
                 
                 # Try different regex patterns to find the visualization container
                 # Pattern 1: Standard div with id
@@ -263,7 +264,60 @@ class ClaudeClient:
                 
                 # If no match found with any pattern, create a container div and wrap the code
                 current_app.logger.warning("Visualization container div not found in Claude response, creating wrapper")
-                wrapped_code = f'<div id="visualization-container">{visualization_code}</div>'
+                
+                # NEW: Improved wrapping logic to handle scripts properly
+                if "<script" in visualization_code:
+                    # Extract all scripts and other HTML content
+                    script_pattern = re.compile(r'<script.*?</script>', re.DOTALL)
+                    script_tags = script_pattern.findall(visualization_code)
+                    
+                    # Separate library scripts (CDN links) from code scripts
+                    lib_scripts = []
+                    code_scripts = []
+                    
+                    for script in script_tags:
+                        if "cdn" in script.lower() or "https://" in script:
+                            lib_scripts.append(script)
+                        else:
+                            code_scripts.append(script)
+                    
+                    # Remove script tags from the original content
+                    content_without_scripts = script_pattern.sub('', visualization_code)
+                    
+                    # Extract any div elements that might contain the chart
+                    div_pattern = re.compile(r'<div.*?</div>', re.DOTALL)
+                    div_elements = div_pattern.findall(content_without_scripts)
+                    
+                    # Construct the final HTML in the proper order
+                    wrapped_code = '<div id="visualization-container">\n'
+                    
+                    # Add library scripts first
+                    for script in lib_scripts:
+                        wrapped_code += script + '\n'
+                    
+                    # Add the HTML content (divs, canvas, etc.)
+                    if div_elements:
+                        for div in div_elements:
+                            wrapped_code += div + '\n'
+                    else:
+                        # If no divs found, add generic chart container
+                        wrapped_code += '<div style="width: 100%; height: 400px;">\n'
+                        wrapped_code += '  <canvas id="chart"></canvas>\n'
+                        wrapped_code += '</div>\n'
+                    
+                    # Add canvas elements if missing but referenced in scripts
+                    if 'getElementById("chart")' in str(code_scripts) and '<canvas id="chart"' not in wrapped_code:
+                        wrapped_code += '<canvas id="chart"></canvas>\n'
+                        
+                    # Add code scripts last
+                    for script in code_scripts:
+                        wrapped_code += script + '\n'
+                    
+                    wrapped_code += '</div>'
+                else:
+                    # If no scripts found, just wrap the content
+                    wrapped_code = f'<div id="visualization-container">{visualization_code}</div>'
+                
                 current_app.logger.debug(f"Wrapped visualization code: {wrapped_code}")
                 return wrapped_code
             
