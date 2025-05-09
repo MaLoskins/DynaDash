@@ -70,10 +70,10 @@
                                     </div>
                                 </button>
                             </div>
-                            <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm" role="menuitem">Your Profile</a>
-                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm" role="menuitem">Change Password</a>
-                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm" role="menuitem">Sign out</a>
+                            <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-xl z-50 py-1 focus:outline-none ring-1 ring-black ring-opacity-5" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Your Profile</a>
+                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Change Password</a>
+                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Sign out</a>
                             </div>
                         </div>
                     </div>

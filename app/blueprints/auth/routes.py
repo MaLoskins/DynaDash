@@ -40,6 +40,7 @@ def register():
     
     form = RegistrationForm()
     if form.validate_on_submit():
+        # Create new user
         user = User(
             name=form.name.data,
             email=form.email.data,
@@ -73,6 +74,28 @@ def change_password():
             flash('Current password is incorrect.', 'danger')
     
     return render_template('auth/change_password.html', title='Change Password', form=form)
+
+@auth.route('/delete-account', methods=['POST'])
+@login_required
+def delete_account():
+    """Allow the current user to permanently delete their account."""
+    user = current_user
+
+    # Delete all datasets and visualisations associated with the user
+    from ...models import Dataset, Visualisation, Share
+
+    Share.query.filter((Share.owner_id == user.id) | (Share.target_id == user.id)).delete()
+    datasets = Dataset.query.filter_by(user_id=user.id).all()
+    for dataset in datasets:
+        Visualisation.query.filter_by(dataset_id=dataset.id).delete()
+        db.session.delete(dataset)
+
+    db.session.delete(user)
+    db.session.commit()
+
+    logout_user()
+    flash('Your account has been deleted.', 'info')
+    return redirect(url_for('visual.welcome'))
 
 # API Routes
 

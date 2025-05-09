@@ -3,7 +3,7 @@ from flask import Flask, redirect, url_for
 from flask_login import LoginManager, current_user
 from flask_socketio import SocketIO
 from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 
 from .models import db, User
 from config import config
@@ -63,5 +63,10 @@ def create_app(config_name='default'):
             return redirect(url_for('visual.index'))
         else:
             return redirect(url_for('visual.welcome'))
+        
+    @app.context_processor
+    def inject_csrf_token():
+        return dict(csrf_token=generate_csrf)
 
     return app
+
