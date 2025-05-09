@@ -1,12 +1,12 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Generate Visualization - DynaDash{% endblock %}
+{% block title %}Generate Dashboard - DynaDash{% endblock %}
 
 {% block content %}
 <div class="py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Generate Visualization</h1>
+            <h1 class="text-3xl font-bold text-gray-800">Generate Dashboard</h1>
             <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
                 <i class="fas fa-arrow-left mr-1"></i> Back to Dataset
             </a>
@@ -37,14 +37,14 @@
                 </div>
             </div>
             
-            <!-- Visualization Form -->
+            <!-- Dashboard Form -->
             <div class="md:col-span-2">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Visualization Options</h2>
+                        <h2 class="text-lg font-semibold text-gray-800">Dashboard Options</h2>
                     </div>
                     <div class="p-4">
-                        <form method="POST" action="{{ url_for('visual.generate', dataset_id=dataset.id) }}">
+                        <form method="POST" action="{{ url_for('visual.generate', dataset_id=dataset.id) }}" id="dashboard-form">
                             {{ form.hidden_tag() }}
                             
                             <div class="mb-4">
@@ -68,7 +68,7 @@
                                     {{ form.description.label }}
                                 </label>
                                 <div class="mt-1">
-                                    {{ form.description(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md", rows=3) }}
+                                    {{ form.description(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md", rows=3, placeholder="Describe what insights you're looking for or what aspects of the data you want to highlight...") }}
                                     {% if form.description.errors %}
                                         <div class="text-red-500 text-xs mt-1">
                                             {% for error in form.description.errors %}
@@ -77,30 +77,35 @@
                                         </div>
                                     {% endif %}
                                 </div>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Adding a descriptive explanation of your data and what insights you're looking for will help generate more relevant visualizations.
+                                </p>
                             </div>
                             
                             <div class="mb-6">
                                 <div class="bg-blue-50 border border-blue-200 rounded p-3">
                                     <span class="text-blue-800 text-sm">
-                                        <strong>Note:</strong> The visualization type will now be selected automatically by Claude based on your data and description.
+                                        <strong>Note:</strong> Claude will analyze your dataset and automatically create a fully interactive dashboard with multiple visualizations. This process may take up to 60-90 seconds for larger datasets.
                                     </span>
                                 </div>
                             </div>
                             
                             <div class="flex justify-end">
-                                {{ form.submit(class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500") }}
+                                {{ form.submit(class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500", value="Generate Dashboard", id="submit-button") }}
                             </div>
                         </form>
                     </div>
                 </div>
                 
                 <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-blue-800 mb-2">Visualization Information</h3>
+                    <h3 class="text-lg font-semibold text-blue-800 mb-2">Dashboard Generation Information</h3>
                     <ul class="list-disc list-inside text-blue-700 space-y-1">
-                        <li>Visualizations are generated using Anthropic's Claude API</li>
-                        <li>The process may take a few moments to complete</li>
-                        <li>You can share your visualizations with other users</li>
-                        <li><strong>Chart type selection is now automatic:</strong> Claude will analyze your data and description to choose the most appropriate visualization type for you.</li>
+                        <li>Dashboards are generated using Anthropic's Claude API</li>
+                        <li>The process may take 60-90 seconds to complete depending on dataset size</li>
+                        <li>Your dashboard will include multiple interactive visualizations</li>
+                        <li>The dashboard will also include data insights and analysis</li>
+                        <li>You can share your dashboards with other users</li>
+                        <li>Generated dashboards can be viewed in fullscreen mode or downloaded as HTML files</li>
                     </ul>
                 </div>
             </div>
@@ -109,16 +114,44 @@
         <!-- Processing Modal -->
         <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
             <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">Generating Visualization</h3>
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Generating Dashboard</h3>
                 <div class="mb-4">
                     <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                     <p id="progress-label" class="text-sm text-gray-600 mt-2">Initializing...</p>
                 </div>
-                <p class="text-gray-600 text-sm">
-                    Please wait while we generate your visualization. This may take a few moments.
-                </p>
+                <div class="text-gray-600 text-sm">
+                    <p class="mb-2">Claude is analyzing your data and creating a custom dashboard. This may take 60-90 seconds to complete.</p>
+                    <div id="steps-container" class="border border-gray-200 rounded p-2 mt-3">
+                        <p class="text-xs text-gray-500 mb-1">Current progress:</p>
+                        <ul class="text-xs space-y-1">
+                            <li id="step-1" class="flex items-center">
+                                <span class="inline-block w-4 h-4 mr-2 rounded-full bg-gray-300" id="step-1-indicator"></span> 
+                                <span>Preparing dataset and analyzing structure</span>
+                            </li>
+                            <li id="step-2" class="flex items-center text-gray-400">
+                                <span class="inline-block w-4 h-4 mr-2 rounded-full bg-gray-300" id="step-2-indicator"></span> 
+                                <span>Identifying key data relationships</span>
+                            </li>
+                            <li id="step-3" class="flex items-center text-gray-400">
+                                <span class="inline-block w-4 h-4 mr-2 rounded-full bg-gray-300" id="step-3-indicator"></span> 
+                                <span>Generating dashboard layout</span>
+                            </li>
+                            <li id="step-4" class="flex items-center text-gray-400">
+                                <span class="inline-block w-4 h-4 mr-2 rounded-full bg-gray-300" id="step-4-indicator"></span> 
+                                <span>Creating visualizations</span>
+                            </li>
+                            <li id="step-5" class="flex items-center text-gray-400">
+                                <span class="inline-block w-4 h-4 mr-2 rounded-full bg-gray-300" id="step-5-indicator"></span> 
+                                <span>Finalizing and saving dashboard</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="error-message" class="mt-4 p-3 bg-red-100 border border-red-300 rounded text-red-700 text-sm hidden">
+                    An error occurred. Please try again or contact support if the problem persists.
+                </div>
             </div>
         </div>
     </div>
@@ -128,27 +161,125 @@
 {% block scripts %}
 <script>
     $(document).ready(function() {
-        const form = $('form');
+        const form = $('#dashboard-form');
+        const submitButton = $('#submit-button');
         const processingModal = $('#processing-modal');
         const progressBar = $('#progress-bar');
         const progressLabel = $('#progress-label');
+        const errorMessage = $('#error-message');
+        
+        // Step indicators
+        const steps = [
+            { elem: $('#step-1'), indicator: $('#step-1-indicator') },
+            { elem: $('#step-2'), indicator: $('#step-2-indicator') },
+            { elem: $('#step-3'), indicator: $('#step-3-indicator') },
+            { elem: $('#step-4'), indicator: $('#step-4-indicator') },
+            { elem: $('#step-5'), indicator: $('#step-5-indicator') }
+        ];
+        
+        function updateStep(stepIndex, active) {
+            for (let i = 0; i < steps.length; i++) {
+                if (i < stepIndex) {
+                    // Completed steps
+                    steps[i].elem.removeClass('text-gray-400').addClass('text-gray-800');
+                    steps[i].indicator.removeClass('bg-gray-300 bg-blue-500 animate-pulse').addClass('bg-green-500');
+                } else if (i === stepIndex && active) {
+                    // Current step
+                    steps[i].elem.removeClass('text-gray-400').addClass('text-gray-800');
+                    steps[i].indicator.removeClass('bg-gray-300 bg-green-500').addClass('bg-blue-500 animate-pulse');
+                } else {
+                    // Future steps
+                    steps[i].elem.removeClass('text-gray-800').addClass('text-gray-400');
+                    steps[i].indicator.removeClass('bg-green-500 bg-blue-500 animate-pulse').addClass('bg-gray-300');
+                }
+            }
+        }
         
         form.on('submit', function() {
             processingModal.removeClass('hidden');
+            submitButton.prop('disabled', true);
+            errorMessage.addClass('hidden');
             
-            // Connect to Socket.IO for progress updates
+            // Set initial progress
+            progressBar.css('width', '5%');
+            progressLabel.text('Starting dashboard generation...');
+            updateStep(0, true);
+            
+            // Simulate progress for better UX (Claude API doesn't provide real-time progress)
+            let progress = 5;
+            let currentStep = 0;
+            
+            const progressInterval = setInterval(function() {
+                if (progress < 95) {
+                    const increment = Math.floor(Math.random() * 3) + 1; // Random increment between 1-3%
+                    progress += increment;
+                    
+                    if (progress > 95) progress = 95; // Cap at 95%
+                    progressBar.css('width', progress + '%');
+                    
+                    // Update step based on progress percentage
+                    let newStep;
+                    if (progress < 20) {
+                        newStep = 0;
+                        progressLabel.text('Analyzing dataset structure...');
+                    } else if (progress < 40) {
+                        newStep = 1;
+                        progressLabel.text('Identifying key data relationships...');
+                    } else if (progress < 60) {
+                        newStep = 2;
+                        progressLabel.text('Generating dashboard layout...');
+                    } else if (progress < 80) {
+                        newStep = 3;
+                        progressLabel.text('Creating visualizations...');
+                    } else {
+                        newStep = 4;
+                        progressLabel.text('Finalizing dashboard...');
+                    }
+                    
+                    if (newStep !== currentStep) {
+                        updateStep(newStep, true);
+                        currentStep = newStep;
+                    }
+                }
+            }, 1000); // Update every 1 second
+            
+            // Connect to Socket.IO for actual completion or error events
             const socket = io();
             
             socket.on('progress_update', function(data) {
-                progressBar.css('width', data.percent + '%');
-                progressLabel.text(data.message);
+                // If we get a real progress update, use it instead of the simulation
+                if (data.percent > progress) {
+                    progress = data.percent;
+                    progressBar.css('width', progress + '%');
+                    progressLabel.text(data.message);
+                    
+                    // Update step based on actual server-sent progress
+                    if (progress >= 90) {
+                        updateStep(4, true);
+                        currentStep = 4;
+                    }
+                }
             });
             
             socket.on('processing_complete', function() {
+                clearInterval(progressInterval);
                 progressBar.css('width', '100%');
-                progressLabel.text('Visualization generated successfully!');
+                progressLabel.text('Dashboard completed successfully!');
+                updateStep(4, false); // Mark last step as completed (not active)
+                updateStep(5, false); // All steps completed
                 
-                // Redirect will happen automatically from the server
+                // Briefly show completion before redirect
+                setTimeout(function() {
+                    // Redirect will happen automatically from the server
+                }, 1000);
+            });
+            
+            socket.on('processing_error', function(data) {
+                clearInterval(progressInterval);
+                errorMessage.removeClass('hidden').text(data.message || 'An error occurred. Please try again or contact support.');
+                progressBar.removeClass('bg-blue-600').addClass('bg-red-600');
+                progressLabel.text('Error generating dashboard');
+                submitButton.prop('disabled', false);
             });
         });
     });
