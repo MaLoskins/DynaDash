@@ -169,7 +169,7 @@ class ClaudeClient:
         
         return prompt.strip()
     
-    def generate_dashboard(self, dataset_id, title, description=""):
+    def generate_dashboard(self, dataset_id, title, description="", use_thinking=True):
         """Generate a complete dashboard visualization for a dataset using Claude."""
         self._initialize_client()
         
@@ -182,18 +182,33 @@ class ClaudeClient:
         
         for attempt in range(max_retries):
             try:
-                response = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=12000,  # Increased token limit for larger responses
-                    temperature=0.3,
-                    system="You are a data visualization expert that creates beautiful, interactive dashboards using HTML, CSS, and JavaScript. You only respond with complete HTML code for a dashboard, with no explanations or Markdown.",
-                    messages=[
+                # Create the API request parameters
+                params = {
+                    "model": self.model,
+                    "max_tokens": 12000,  # Increased token limit for larger responses
+                    "temperature": 1,     # Keep at 1 as required for thinking mode
+                    "system": "You are a data visualization expert that creates beautiful, interactive dashboards using HTML, CSS, and JavaScript. You only respond with complete HTML code for a dashboard, with no explanations or Markdown.",
+                    "messages": [
                         {"role": "user", "content": prompt}
                     ]
-                )
+                }
+                
+                # Add thinking parameter if enabled
+                if use_thinking:
+                    params["thinking"] = {"type": "enabled", "budget_tokens": 4000}
+                
+                response = self.client.messages.create(**params)
                 
                 # Extract the dashboard HTML from the response
-                dashboard_html = response.content[0].text
+                # Find the text block in the content (when thinking is enabled, there will be both thinking and text blocks)
+                dashboard_html = None
+                for block in response.content:
+                    if hasattr(block, 'text'):
+                        dashboard_html = block.text
+                        break
+                        
+                if dashboard_html is None:
+                    raise ValueError("No text content found in the response")
                 
                 # Clean up the code (remove markdown code blocks if present)
                 if dashboard_html.startswith("```html"):
@@ -208,11 +223,17 @@ class ClaudeClient:
                     # Generic code block without language specifier
                     dashboard_html = dashboard_html.replace("```", "").strip()
                 
+                # Fix common corruptions in the generated code
+                dashboard_html = dashboard_html.replace("cdata-disabled-event", "")
+                dashboard_html = dashboard_html.replace("mentidata-disabled-event", "mentions")
+                dashboard_html = dashboard_html.replace("chartCdata-disabled-event", "chartContainers")
+                dashboard_html = dashboard_html.replace("textCdata-disabled-event", "textContent")
+                
                 # Log the first 500 characters of the response for debugging
                 current_app.logger.debug(f"Dashboard HTML (first 500 chars): {dashboard_html[:500]}...")
                 
                 return dashboard_html
-            
+                
             except Exception as e:
                 if attempt < max_retries - 1:
                     current_app.logger.warning(f"Claude API request failed, retrying in {retry_delay} seconds: {str(e)}")
@@ -228,8 +249,7 @@ class ClaudeClient:
         current_app.logger.info("Legacy generate_visualization method called - redirecting to generate_dashboard")
         return self.generate_dashboard(dataset_id, title)
     
-    # Keep this method for backward compatibility
-    def analyze_dataset(self, dataset_id):
+    def analyze_dataset(self, dataset_id, use_thinking=True):
         """Analyze a dataset and provide insights."""
         self._initialize_client()
         
@@ -275,18 +295,33 @@ class ClaudeClient:
         
         for attempt in range(max_retries):
             try:
-                response = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=4000,
-                    temperature=0.2,
-                    system="You are a data analysis expert that provides insights and recommendations. You respond with JSON only.",
-                    messages=[
+                # Create the API request parameters
+                params = {
+                    "model": self.model,
+                    "max_tokens": 4000,
+                    "temperature": 1,
+                    "system": "You are a data analysis expert that provides insights and recommendations. You respond with JSON only.",
+                    "messages": [
                         {"role": "user", "content": prompt}
                     ]
-                )
+                }
+                
+                # Add thinking parameter if enabled
+                if use_thinking:
+                    params["thinking"] = {"type": "enabled", "budget_tokens": 4000}
+                
+                response = self.client.messages.create(**params)
                 
                 # Extract the analysis from the response
-                analysis_text = response.content[0].text
+                # Find the text block in the content (when thinking is enabled, there will be both thinking and text blocks)
+                analysis_text = None
+                for block in response.content:
+                    if hasattr(block, 'text'):
+                        analysis_text = block.text
+                        break
+                        
+                if analysis_text is None:
+                    raise ValueError("No text content found in the response")
                 
                 # Clean up the response (remove markdown code blocks if present)
                 if analysis_text.startswith("```json"):
