@@ -40,19 +40,19 @@
                         <ul class="space-y-3">
                             <li class="flex justify-between">
                                 <span class="text-gray-600">File Type:</span>
-                                <span class="font-medium text-gray-800">{{ dataset.file_type.upper() }}</span>
+                                <span class="font-medium text-gray-200">{{ dataset.file_type.upper() }}</span>
                             </li>
                             <li class="flex justify-between">
                                 <span class="text-gray-600">Rows:</span>
-                                <span class="font-medium text-gray-800">{{ dataset.n_rows }}</span>
+                                <span class="font-medium text-gray-200">{{ dataset.n_rows }}</span>
                             </li>
                             <li class="flex justify-between">
                                 <span class="text-gray-600">Columns:</span>
-                                <span class="font-medium text-gray-800">{{ dataset.n_columns }}</span>
+                                <span class="font-medium text-gray-200">{{ dataset.n_columns }}</span>
                             </li>
                             <li class="flex justify-between">
                                 <span class="text-gray-600">Uploaded:</span>
-                                <span class="font-medium text-gray-800">{{ dataset.uploaded_at.strftime('%b %d, %Y') }}</span>
+                                <span class="font-medium text-gray-200">{{ dataset.uploaded_at.strftime('%b %d, %Y') }}</span>
                             </li>
                             <li class="flex justify-between">
                                 <span class="text-gray-600">Visibility:</span>
@@ -63,7 +63,7 @@
                             {% if dataset.user_id != current_user.id %}
                             <li class="flex justify-between">
                                 <span class="text-gray-600">Owner:</span>
-                                <span class="font-medium text-gray-800">{{ dataset.owner.name }}</span>
+                                <span class="font-medium text-gray-200">{{ dataset.owner.name }}</span>
                             </li>
                             {% endif %}
                         </ul>
@@ -113,7 +113,7 @@
                             {% for vis in visualisations %}
                                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                                     <div class="p-3 border-b border-gray-200">
-                                        <h3 class="font-medium text-gray-800 truncate">{{ vis.title }}</h3>
+                                        <h3 class="font-medium text-gray-200 truncate">{{ vis.title }}</h3>
                                     </div>
                                     <div class="p-3 bg-gray-50 h-40 flex items-center justify-center">
                                         <div class="w-full h-full overflow-hidden">
