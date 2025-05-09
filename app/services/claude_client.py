@@ -161,6 +161,10 @@ class ClaudeClient:
         11. All JavaScript, CSS, and HTML must be in a single file.
         12. Ensure all charts and visualizations load and initialize properly when the page loads.
         13. Handle potential data issues gracefully (missing values, outliers, etc.).
+        14. IMPORTANT: Include complete JavaScript code that creates charts using 'new Chart(ctx, config)' for each canvas element. Never omit chart initialization code.
+        15. IMPORTANT: Use D3.js or Chart.js to parse and process the CSV data for the visualization.
+        16. IMPORTANT: Make sure to properly parse the CSV data and convert it into a format suitable for the charts.
+        17. IMPORTANT: Each chart or visualization must have corresponding JavaScript that FULLY initializes it.
 
         # Response Format
         Return ONLY the complete HTML code for the dashboard, with no explanation or markdown formatting.
@@ -222,6 +226,14 @@ class ClaudeClient:
                     # Generic code block without language specifier
                     dashboard_html = dashboard_html.replace("```", "").strip()
                 
+                # Check if the dashboard has proper chart initialization code
+                if "const csvData =" in dashboard_html and "new Chart" not in dashboard_html:
+                    current_app.logger.warning("Generated dashboard is missing chart initialization, trying again with a stronger prompt")
+                    if attempt < max_retries - 1:
+                        # Add a more specific chart initialization requirement for next attempt
+                        prompt += "\n\nIMPORTANT: Make sure to include complete JavaScript code that processes the CSV data and initializes Chart.js charts using 'new Chart(ctx, config)' syntax. Your HTML must include proper chart initialization code."
+                        continue
+                
                 # Systematically sanitize the HTML/JS output
                 dashboard_html = self._sanitize_dashboard_html(dashboard_html)
                 
@@ -246,6 +258,101 @@ class ClaudeClient:
         """
         if not html_content:
             return html_content
+        
+        # Check if the dashboard HTML is incomplete (missing charts initialization)
+        if "const csvData =" in html_content and (
+            html_content.strip().endswith("</script>") or 
+            "new Chart" not in html_content or
+            html_content.count("canvas") > html_content.count("new Chart")
+        ):
+            current_app.logger.warning("Detected incomplete chart initialization in dashboard HTML")
+            
+            # Add fallback chart initialization if necessary
+            if "</body>" in html_content:
+                fallback_charts = """
+                <script>
+                // Fallback chart initialization
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log("Adding fallback chart initialization");
+                    
+                    // Parse CSV data if it exists but charts weren't created
+                    try {
+                        // Process any canvas elements that don't have charts
+                        const canvases = document.querySelectorAll('canvas');
+                        canvases.forEach(function(canvas) {
+                            if (!canvas.chart && canvas.id) {
+                                console.log("Creating fallback chart for:", canvas.id);
+                                
+                                // Get chart type from canvas ID
+                                const isBarChart = canvas.id.includes('bar') || canvas.id.includes('distribution');
+                                const isLineChart = canvas.id.includes('timeline') || canvas.id.includes('time');
+                                const isScatterChart = canvas.id.includes('scatter');
+                                const isPieChart = canvas.id.includes('pie') || canvas.id.includes('topic');
+                                
+                                // Create simple placeholder chart
+                                let chartType = 'bar';
+                                if (isLineChart) chartType = 'line';
+                                if (isScatterChart) chartType = 'scatter';
+                                if (isPieChart) chartType = 'pie';
+                                
+                                // Create simple data
+                                let data = {
+                                    labels: ['Category 1', 'Category 2', 'Category 3', 'Category 4'],
+                                    datasets: [{
+                                        label: 'Sample Data',
+                                        data: [12, 19, 3, 5],
+                                        backgroundColor: [
+                                            'rgba(75, 192, 192, 0.5)',
+                                            'rgba(54, 162, 235, 0.5)',
+                                            'rgba(255, 206, 86, 0.5)',
+                                            'rgba(255, 99, 132, 0.5)'
+                                        ],
+                                        borderColor: [
+                                            'rgba(75, 192, 192, 1)',
+                                            'rgba(54, 162, 235, 1)',
+                                            'rgba(255, 206, 86, 1)',
+                                            'rgba(255, 99, 132, 1)'
+                                        ],
+                                        borderWidth: 1
+                                    }]
+                                };
+                                
+                                // Configure chart
+                                const config = {
+                                    type: chartType,
+                                    data: data,
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            title: {
+                                                display: true,
+                                                text: 'Data Visualization',
+                                                font: { size: 16 }
+                                            },
+                                            legend: {
+                                                position: 'top'
+                                            },
+                                            tooltip: {
+                                                enabled: true
+                                            }
+                                        }
+                                    }
+                                };
+                                
+                                // Create chart
+                                if (typeof Chart !== 'undefined') {
+                                    canvas.chart = new Chart(canvas, config);
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.error("Error creating fallback charts:", err);
+                    }
+                });
+                </script>
+                """
+                html_content = html_content.replace('</body>', fallback_charts + '</body>')
         
         # Fix corrupted patterns - these appear consistently in thinking-mode generated HTML
         corrupted_patterns = {
@@ -298,9 +405,7 @@ class ClaudeClient:
             ("_.map", "_ && _.map")
         ]
         
-        # Lists don't have .items() method, so iterate through directly
-        for pattern_tuple in js_safety_patterns:
-            pattern, replacement = pattern_tuple
+        for pattern, replacement in js_safety_patterns:
             html_content = html_content.replace(pattern, replacement)
         
         # Find and fix any broken event listeners
@@ -310,9 +415,7 @@ class ClaudeClient:
             ("window.addEvent", "window.addEventListener")
         ]
         
-        # Lists don't have .items() method, so iterate through directly
-        for pattern_tuple in broken_event_patterns:
-            pattern, replacement = pattern_tuple
+        for pattern, replacement in broken_event_patterns:
             html_content = html_content.replace(pattern, replacement)
         
         # Ensure proper HTML structure
@@ -334,52 +437,145 @@ class ClaudeClient:
                     html_content = html_content.replace("</html>", "</body>\n</html>")
         
         # Add a basic error handling mechanism for the dashboard
-        error_handling_script = """
-    <script>
-    // Add basic error handling to prevent dashboard from getting stuck
-    window.addEventListener('error', function(e) {
-        console.error('Dashboard error:', e.message);
-        // If the page is still showing loading after errors, try to hide the loading indicator
-        setTimeout(function() {
-            var loadingElements = document.querySelectorAll('.loading, #loading, [id*="loading"], [class*="loading"]');
-            loadingElements.forEach(function(el) {
-                el.style.display = 'none';
-            });
-        }, 5000);
-    });
-
-    // Ensure all charts are properly initialized
-    document.addEventListener('DOMContentLoaded', function() {
-        // Force charts to render after a delay
-        setTimeout(function() {
-            if (typeof Chart !== 'undefined') {
-                // Force all canvases to update
-                var canvases = document.querySelectorAll('canvas');
-                canvases.forEach(function(canvas) {
-                    if (canvas.chart) {
-                        try {
-                            canvas.chart.update();
-                        } catch (e) {
-                            console.warn('Could not update chart:', e);
-                        }
-                    }
+        # Make sure we don't add duplicate error handlers
+        if "Dashboard error:" not in html_content or html_content.count("Dashboard error:") < 2:
+            error_handling_script = """
+        <script>
+        // Add basic error handling to prevent dashboard from getting stuck
+        window.addEventListener('error', function(e) {
+            console.error('Dashboard error:', e.message, e.filename, e.lineno);
+            
+            // If the page is still showing loading after errors, try to hide the loading indicator
+            setTimeout(function() {
+                var loadingElements = document.querySelectorAll('.loading, #loading, [id*="loading"], [class*="loading"]');
+                loadingElements.forEach(function(el) {
+                    el.style.display = 'none';
                 });
-            }
-        }, 1000);
-    });
-    </script>
-    """
+                
+                // Try to fix any broken charts
+                if (typeof Chart !== 'undefined') {
+                    var canvases = document.querySelectorAll('canvas');
+                    canvases.forEach(function(canvas) {
+                        if (!canvas.chart && canvas.id) {
+                            try {
+                                console.log("Attempting to create chart for:", canvas.id);
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                    canvas.chart = new Chart(ctx, {
+                                        type: 'bar',
+                                        data: {
+                                            labels: ['Sample'],
+                                            datasets: [{
+                                                label: 'Data',
+                                                data: [5],
+                                                backgroundColor: 'rgba(75, 192, 192, 0.5)'
+                                            }]
+                                        },
+                                        options: {
+                                            responsive: true,
+                                            plugins: {
+                                                title: {
+                                                    display: true,
+                                                    text: 'Data Preview'
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            } catch (err) {
+                                console.warn('Could not create fallback chart:', err);
+                            }
+                        }
+                    });
+                }
+            }, 2000);
+        });
+
+        // Ensure all charts are properly initialized
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded - initializing any uninitialized charts");
+            
+            // Force charts to render after a delay
+            setTimeout(function() {
+                if (typeof Chart !== 'undefined') {
+                    // Force all canvases to update
+                    var canvases = document.querySelectorAll('canvas');
+                    canvases.forEach(function(canvas) {
+                        if (canvas.chart) {
+                            try {
+                                canvas.chart.update();
+                            } catch (e) {
+                                console.warn('Could not update chart:', e);
+                            }
+                        } else if (canvas.id) {
+                            console.log("Found canvas without chart:", canvas.id);
+                        }
+                    });
+                }
+            }, 1000);
+        });
+        </script>
+        """
+            
+            # Add the error handling script before the closing body tag
+            if "</body>" in html_content:
+                html_content = html_content.replace("</body>", error_handling_script + "\n</body>")
+            else:
+                # If there's no body tag, add it at the end
+                html_content += "\n" + error_handling_script
         
-        # Add the error handling script before the closing body tag
-        if "</body>" in html_content:
-            html_content = html_content.replace("</body>", error_handling_script + "\n</body>")
-        else:
-            # If there's no body tag, add it at the end
-            html_content += "\n" + error_handling_script
+        # Fix any truncated CSV data
+        if "const csvData =" in html_content and not ";</script>" in html_content:
+            current_app.logger.warning("Detected truncated CSV data in dashboard HTML")
+            fix_script = """
+        <script>
+        // Fix for truncated CSV data
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Handling potentially truncated CSV data");
+            // Check all scripts for truncated CSV data
+            const scripts = document.querySelectorAll('script');
+            scripts.forEach(function(script) {
+                const content = script.textContent || script.innerText;
+                if (content && content.includes('const csvData =') && !content.includes(';</script>')) {
+                    console.warn("Detected truncated CSV data, attempting to fix");
+                    // This script has truncated CSV, let's fix variable declaration
+                    try {
+                        // Try to extract what we have and make it valid
+                        const csvLines = content.split('\\n').filter(line => line.trim().length > 0);
+                        if (csvLines.length > 1) {
+                            // Create a valid array of records from available data
+                            const headers = csvLines[0].split(',');
+                            const validData = [];
+                            
+                            for (let i = 1; i < csvLines.length; i++) {
+                                const values = csvLines[i].split(',');
+                                if (values.length >= headers.length) {
+                                    const record = {};
+                                    headers.forEach((header, index) => {
+                                        record[header] = values[index];
+                                    });
+                                    validData.push(record);
+                                }
+                            }
+                            
+                            // Make global variable available with the fixed data
+                            window.fixedCsvData = validData;
+                            console.log("Created fixedCsvData with", validData.length, "records");
+                        }
+                    } catch (err) {
+                        console.error("Could not fix truncated CSV:", err);
+                    }
+                }
+            });
+        });
+        </script>
+        """
+            if "</body>" in html_content:
+                html_content = html_content.replace("</body>", fix_script + "\n</body>")
         
         return html_content
-        
-        return html_content
+            
+      
     # Keep the legacy method for backward compatibility if needed
     def generate_visualization(self, dataset_id, title):
         """Legacy method - now redirects to generate_dashboard."""

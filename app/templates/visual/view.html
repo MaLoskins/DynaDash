@@ -9,9 +9,14 @@
     .dashboard-frame {
         width: 100%;
         height: 800px;
+        min-height: 800px;
         border: none;
         background-color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Make sure charts display properly */
+    .dashboard-frame canvas {
+        max-width: 100%;
     }
     
     /* Ensure the dashboard container expands fully */

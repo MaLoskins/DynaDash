@@ -154,8 +154,8 @@ def clean_dashboard_html(html_content):
     if not re.search(r'</body>', html_content):
         html_content = re.sub(r'</html>', '</body>\n</html>', html_content)
     
-    # Replace any potential harmful attributes
-    html_content = re.sub(r'on\w+\s*=', 'data-disabled-event=', html_content)
+    # Replace only event handler attributes (with word boundaries to prevent breaking variable names)
+    html_content = re.sub(r'(\s)on(\w+)\s*=', r'\1data-disabled-event-\2=', html_content)
     
     # Fix common invalid HTML issues
     html_content = html_content.replace('&lt;', '<').replace('&gt;', '>')
@@ -323,6 +323,74 @@ def clean_dashboard_html(html_content):
     
     # Fix any HTML lang attribute issues (Claude sometimes generates weird ones)
     html_content = re.sub(r'<html lang="\s*en\s*"="">', '<html lang="en">', html_content)
+    
+    # Add error handling script
+    error_handling_script = """
+<script>
+// Add basic error handling to prevent dashboard from getting stuck
+window.addEventListener('error', function(e) {
+    console.error('Dashboard error:', e.message, e.filename, e.lineno);
+    // Log to debug div if it exists
+    if (document.getElementById('debug-output')) {
+        document.getElementById('debug-output').innerHTML += '<div>Error: ' + e.message + ' at line ' + e.lineno + '</div>';
+    }
+    
+    // If the page is still showing loading after errors, try to hide the loading indicator
+    setTimeout(function() {
+        var loadingElements = document.querySelectorAll('.loading, #loading, [id*="loading"], [class*="loading"]');
+        loadingElements.forEach(function(el) {
+            el.style.display = 'none';
+        });
+    }, 5000);
+});
+
+// Ensure all charts are properly initialized
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM fully loaded, initializing charts');
+    
+    // Create debug div if needed
+    if (!document.getElementById('debug-output') && window.location.search.includes('debug=true')) {
+        var debugDiv = document.createElement('div');
+        debugDiv.id = 'debug-output';
+        debugDiv.style.padding = '10px';
+        debugDiv.style.margin = '10px';
+        debugDiv.style.border = '1px solid red';
+        debugDiv.style.backgroundColor = '#ffeeee';
+        debugDiv.innerHTML = '<h4>Debug Output:</h4>';
+        document.body.appendChild(debugDiv);
+    }
+    
+    // Force charts to render after a delay
+    setTimeout(function() {
+        if (typeof Chart !== 'undefined') {
+            try {
+                // Force all canvases to update
+                var canvases = document.querySelectorAll('canvas');
+                canvases.forEach(function(canvas) {
+                    if (canvas.chart) {
+                        try {
+                            canvas.chart.update();
+                        } catch (e) {
+                            console.warn('Could not update chart:', e);
+                        }
+                    }
+                });
+                console.log('Charts should be visible now');
+            } catch (e) {
+                console.error('Error initializing charts:', e);
+            }
+        } else {
+            console.warn('Chart.js not loaded');
+        }
+    }, 1000);
+});
+</script>
+"""
+    
+    if '</body>' in html_content:
+        html_content = html_content.replace('</body>', error_handling_script + '\n</body>')
+    else:
+        html_content += '\n' + error_handling_script
     
     return html_content
 
