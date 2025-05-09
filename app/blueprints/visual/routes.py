@@ -68,7 +68,7 @@ def generate(dataset_id):
             socketio.emit('progress_update', {'percent': 0, 'message': 'Starting visualization generation...'}, room=current_user.id)
             
             # Generate the visualization using Claude
-            visualization_html = claude_client.generate_visualization(dataset.id, form.chart_type.data, form.title.data)
+            visualization_html = claude_client.generate_visualization(dataset.id, form.title.data)
             
             # Create a new visualization record
             visualisation = Visualisation(
@@ -297,12 +297,11 @@ def api_generate():
         return jsonify(error='No data provided'), 400
     
     dataset_id = data.get('dataset_id')
-    chart_type = data.get('chart_type')
     title = data.get('title')
     description = data.get('description', '')
     
-    if not dataset_id or not chart_type or not title:
-        return jsonify(error='Dataset ID, chart type, and title are required'), 400
+    if not dataset_id or not title:
+        return jsonify(error='Dataset ID and title are required'), 400
     
     dataset = Dataset.query.get_or_404(dataset_id)
     
@@ -320,7 +319,7 @@ def api_generate():
     
     try:
         # Generate the visualization using Claude
-        visualization_html = claude_client.generate_visualization(dataset_id, chart_type, title)
+        visualization_html = claude_client.generate_visualization(dataset_id, title)
         
         # Create a new visualization record
         visualisation = Visualisation(

@@ -88,8 +88,8 @@ class TestVisualizationGeneration(unittest.TestCase):
         
         # Mock the _create_visualization_prompt method to avoid dataset_stats generation
         with patch.object(self.client, '_create_visualization_prompt', return_value='mocked prompt'):
-            # Call the method being tested
-            result = self.client.generate_visualization(1, 'bar', 'Test Visualization')
+            # Call the method being tested (chart_type parameter removed)
+            result = self.client.generate_visualization(1, 'Test Visualization')
         
         # Assertions
         self.assertEqual(result, '<div id="visualization-container">Test Visualization</div>')

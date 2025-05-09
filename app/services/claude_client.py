@@ -145,32 +145,32 @@ class ClaudeClient:
         # Convert to JSON for the prompt
         return json.dumps(stats)
     
-    def _create_visualization_prompt(self, dataset_id, chart_type, title):
+    def _create_visualization_prompt(self, dataset_id, title):
         """Create a prompt for generating a visualization."""
         dataset_stats = self._get_dataset_statistics(dataset_id)
         
         prompt = r"""
         You are a data visualization expert. Create a visualization for the following dataset statistics using HTML, CSS, and JavaScript.
-        
+
         Dataset Statistics: """ + dataset_stats + r"""
-        
-        Visualization Type: """ + chart_type + r"""
+
         Title: """ + title + r"""
-        
+
         Requirements:
-        1. Use Chart.js for the visualization (preferred) or D3.js if more appropriate
-        2. Make the visualization logically based on the data types of the sample dataset 
-        3. Use appropriate colors and styling
-        4. Include proper labels and legends 
-        5. Ensure that the visualisation e and y axis is ordered logically (where applicable).
-        6. Return ONLY the HTML/CSS/JavaScript code for the visualization, with no explanation or markdown
-        7. The code should be self-contained and ready to be inserted into a webpage
-        8. CRITICAL: Use a div with id="visualization-container" as the container for the visualization
-        9. IMPORTANT: Return ONLY the <div id="visualization-container"> element and its contents
-        10. Do not include <html>, <head>, <body> tags or any external script loading
-        11. Include all necessary JavaScript libraries as CDN links inside the visualization container
-        12. Make sure to properly initialize and render the chart
-        
+        1. Choose the most appropriate visualization type for the dataset. Do NOT ask the user for a chart type; select the type yourself based on the data characteristics.
+        2. Use Chart.js for the visualization (preferred) or D3.js if more appropriate
+        3. Make the visualization logically based on the data types of the sample dataset
+        4. Use appropriate colors and styling
+        5. Include proper labels and legends
+        6. Ensure that the visualisation x and y axis is ordered logically (where applicable).
+        7. Return ONLY the HTML/CSS/JavaScript code for the visualization, with no explanation or markdown
+        8. The code should be self-contained and ready to be inserted into a webpage
+        9. CRITICAL: Use a div with id="visualization-container" as the container for the visualization
+        10. IMPORTANT: Return ONLY the <div id="visualization-container"> element and its contents
+        11. Do not include <html>, <head>, <body> tags or any external script loading
+        12. Include all necessary JavaScript libraries as CDN links inside the visualization container
+        13. Make sure to properly initialize and render the chart
+
         Example format of your response:
         <div id="visualization-container">
          <!-- Chart.js (core) --> <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script> <!-- Matrix plugin for Chart.js v4 --> <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@3.0.0/dist/chartjs-chart-matrix.min.js"></script>
@@ -186,18 +186,18 @@ class ClaudeClient:
             });
           </script>
         </div>
-        
+
         The visualization should be informative and help users understand the data better.
         """
         
         return prompt.strip()
     
-    def generate_visualization(self, dataset_id, chart_type, title):
+    def generate_visualization(self, dataset_id, title):
         """Generate a visualization for a dataset using Claude."""
         self._initialize_client()
         
         # Create the prompt
-        prompt = self._create_visualization_prompt(dataset_id, chart_type, title)
+        prompt = self._create_visualization_prompt(dataset_id, title)
         
         # Send the request to Claude
         max_retries = 3
@@ -209,7 +209,7 @@ class ClaudeClient:
                     model=self.model,
                     max_tokens=4000,
                     temperature=0.2,
-                    system="You are a data visualization expert that creates beautiful, interactive visualizations using HTML, CSS, and JavaScript. You only respond with code, no explanations.",
+                    system="You are a data visualization expert that creates beautiful, interactive <div> visualizations using HTML, CSS, and JavaScript. You only respond with code, no explanations.",
                     messages=[
                         {"role": "user", "content": prompt}
                     ]

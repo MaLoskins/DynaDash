@@ -80,18 +80,10 @@
                             </div>
                             
                             <div class="mb-6">
-                                <label for="chart_type" class="block text-sm font-medium text-gray-700">
-                                    {{ form.chart_type.label }}
-                                </label>
-                                <div class="mt-1">
-                                    {{ form.chart_type(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md") }}
-                                    {% if form.chart_type.errors %}
-                                        <div class="text-red-500 text-xs mt-1">
-                                            {% for error in form.chart_type.errors %}
-                                                <span>{{ error }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                    <span class="text-blue-800 text-sm">
+                                        <strong>Note:</strong> The visualization type will now be selected automatically by Claude based on your data and description.
+                                    </span>
                                 </div>
                             </div>
                             
@@ -108,7 +100,7 @@
                         <li>Visualizations are generated using Anthropic's Claude API</li>
                         <li>The process may take a few moments to complete</li>
                         <li>You can share your visualizations with other users</li>
-                        <li>Choose the chart type that best represents your data</li>
+                        <li><strong>Chart type selection is now automatic:</strong> Claude will analyze your data and description to choose the most appropriate visualization type for you.</li>
                     </ul>
                 </div>
             </div>
