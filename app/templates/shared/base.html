@@ -45,13 +45,13 @@
                     </div>
                     {% if current_user.is_authenticated %}
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}border-b-2{% endif %} inline-flex items-center px-1 pt-1 text-sm font-medium">
+                        <a href="{{ url_for('visual.index') }}" class="w-28 {% if request.endpoint == 'visual.index' %}border-b-2{% endif %} flex items-center justify-center px-1 text-sm font-medium">
                             Visualizations
                         </a>
-                        <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}border-b-2{% endif %} inline-flex items-center px-1 pt-1 text-sm font-medium">
+                        <a href="{{ url_for('data.index') }}" class="w-28 {% if request.endpoint == 'data.index' %}border-b-2{% endif %} flex items-center justify-center px-1 pt-1 text-sm font-medium">
                             Datasets
                         </a>
-                        <a href="{{ url_for('data.upload') }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium">
+                        <a href="{{ url_for('data.upload') }}" class="w-28 {% if request.endpoint == 'data.upload' %}border-b-2{% endif %} flex items-center justify-center px-1 pt-1 text-sm font-medium">
                             Upload
                         </a>
                     </div>
@@ -70,10 +70,10 @@
                                     </div>
                                 </button>
                             </div>
-                            <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm" role="menuitem">Your Profile</a>
-                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm" role="menuitem">Change Password</a>
-                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm" role="menuitem">Sign out</a>
+                            <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-xl z-50 py-1 focus:outline-none ring-1 ring-black ring-opacity-5" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Your Profile</a>
+                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Change Password</a>
+                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Sign out</a>
                             </div>
                         </div>
                     </div>
@@ -100,13 +100,13 @@
         <div id="mobile-menu" class="hidden sm:hidden">
             <div class="pt-2 pb-3 space-y-1">
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint == 'visual.index' %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
                     Visualizations
                 </a>
-                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint == 'data.index' %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
                     Datasets
                 </a>
-                <a href="{{ url_for('data.upload') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('data.upload') }}" class="{% if request.endpoint == 'data.upload' %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
                     Upload
                 </a>
                 {% else %}

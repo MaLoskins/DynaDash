@@ -2,6 +2,16 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+# Enable SQLite foreign key support
+@event.listens_for(Engine, "connect")
+def enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    if dbapi_connection.__class__.__module__.startswith('sqlite3'):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 # Initialize SQLAlchemy
 db = SQLAlchemy()
@@ -17,7 +27,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    datasets = db.relationship('Dataset', backref='owner', lazy='dynamic')
+    datasets = db.relationship('Dataset', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     owned_shares = db.relationship('Share', foreign_keys='Share.owner_id', backref='owner', lazy='dynamic')
     received_shares = db.relationship('Share', foreign_keys='Share.target_id', backref='target', lazy='dynamic')
     
@@ -43,7 +53,7 @@ class Dataset(db.Model):
     __tablename__ = 'dataset'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     filename = db.Column(db.String(128), nullable=False)
     original_filename = db.Column(db.String(128), nullable=False)
     file_path = db.Column(db.String(256), nullable=False)

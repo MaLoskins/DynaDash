@@ -60,13 +60,12 @@
                         </div>
                     </div>
                     
-                    <div class="mb-6">
-                        <div class="flex items-center">
+                    <div class="mb-6">   
+                        <label for="is_public" class="inline-flex items-center ml-2 block text-sm text-gray-900">
                             {{ form.is_public(class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded") }}
-                            <label for="is_public" class="ml-2 block text-sm text-gray-900">
-                                {{ form.is_public.label }}
-                            </label>
-                        </div>
+                            <span>Make this dataset public</span>
+                        </label>
+                        
                         <p class="text-xs text-gray-500 mt-1">
                             Public datasets can be viewed by all users of the platform.
                         </p>
