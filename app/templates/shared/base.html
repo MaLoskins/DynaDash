@@ -45,15 +45,20 @@
                     </div>
                     {% if current_user.is_authenticated %}
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="{{ url_for('visual.index') }}" class="w-28 {% if request.endpoint == 'visual.index' %}border-b-2{% endif %} flex items-center justify-center px-1 text-sm font-medium">
-                            Visualizations
-                        </a>
-                        <a href="{{ url_for('data.index') }}" class="w-28 {% if request.endpoint == 'data.index' %}border-b-2{% endif %} flex items-center justify-center px-1 pt-1 text-sm font-medium">
-                            Datasets
-                        </a>
-                        <a href="{{ url_for('data.upload') }}" class="w-28 {% if request.endpoint == 'data.upload' %}border-b-2{% endif %} flex items-center justify-center px-1 pt-1 text-sm font-medium">
-                            Upload
-                        </a>
+
+                          <a href="{{ url_for('visual.index') }}"
+                             class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint.startswith('visual') %}border-b-2{% endif %}">
+                                 Visualizations
+                          </a>
+                          <a href="{{ url_for('data.index') }}"
+                             class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint == 'data.index' or (request.endpoint.startswith('data.') and request.endpoint != 'data.upload' and not request.endpoint.startswith('visual.')) %}border-b-2{% endif %}">
+                                  Datasets
+                          </a>
+                          <a href="{{ url_for('data.upload') }}"
+                               class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint == 'data.upload' %}border-b-2{% endif %}">
+                                  Upload
+                          </a>
+
                     </div>
                     {% endif %}
                 </div>
