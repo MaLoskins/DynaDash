@@ -21,7 +21,7 @@
             <div class="rounded-md shadow-sm -space-y-px">
                 <div>
                     <label for="name" class="sr-only">Name</label>
-                    {{ form.name(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-t-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Full Name") }}
+                    {{ form.name(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-t-md focus:outline-none focus:z-10 sm:text-sm", placeholder="User name") }}
                     {% if form.name.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.name.errors %}
@@ -32,7 +32,7 @@
                 </div>
                 <div>
                     <label for="email" class="sr-only">Email address</label>
-                    {{ form.email(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 focus:outline-none focus:z-10 sm:text-sm", placeholder="Email address") }}
+                    {{ form.email(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Email address") }}
                     {% if form.email.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.email.errors %}
@@ -43,7 +43,7 @@
                 </div>
                 <div>
                     <label for="password" class="sr-only">Password</label>
-                    {{ form.password(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 focus:outline-none focus:z-10 sm:text-sm", placeholder="Password") }}
+                    {{ form.password(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Password") }}
                     {% if form.password.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.password.errors %}
@@ -54,7 +54,7 @@
                 </div>
                 <div>
                     <label for="confirm_password" class="sr-only">Confirm Password</label>
-                    {{ form.confirm_password(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-b-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Confirm Password") }}
+                    {{ form.confirm_password(class="appearance-none rounded-none relative block w-full px-3 py-2 border placeholder-gray-500 rounded-md focus:outline-none focus:z-10 sm:text-sm", placeholder="Confirm Password") }}
                     {% if form.confirm_password.errors %}
                         <div class="text-red-500 text-xs mt-1">
                             {% for error in form.confirm_password.errors %}
