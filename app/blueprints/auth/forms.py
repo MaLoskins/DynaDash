@@ -2,6 +2,8 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from ...models import User
+from werkzeug.security import check_password_hash
+from flask_login import current_user
 
 class LoginForm(FlaskForm):
     """Form for user login."""
@@ -56,3 +58,12 @@ class ChangePasswordForm(FlaskForm):
         EqualTo('new_password', message='Passwords must match.')
     ])
     submit = SubmitField('Change Password')
+
+    def validate_new_password(self, new_password_field):
+        """Custom validator to check if the new password is the same as the old one."""
+
+        if current_user and hasattr(current_user, 'password_hash') and current_user.password_hash:
+
+            if check_password_hash(current_user.password_hash, new_password_field.data):
+   
+                raise ValidationError('New password cannot be the same as your current password. Please choose a different password.')
