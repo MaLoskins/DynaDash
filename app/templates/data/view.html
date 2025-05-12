@@ -167,6 +167,7 @@
                 Cancel
             </button>
             <form action="{{ url_for('data.delete', id=dataset.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                     Delete
                 </button>
