@@ -42,22 +42,21 @@
                         <a href="{{ url_for('visual.index') if current_user.is_authenticated else url_for('visual.welcome') }}" class="font-bold text-xl">
                             DynaDash
                         </a>
-                    </div>
-                    {% if current_user.is_authenticated %}
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                          <a href="{{ url_for('visual.index') }}"
-                             class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint.startswith('visual') %}border-b-2{% endif %}">
-                                 Visualizations
-                          </a>
-                          <a href="{{ url_for('data.index') }}"
-                             class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint == 'data.index' or (request.endpoint.startswith('data.') and request.endpoint != 'data.upload' and not request.endpoint.startswith('visual.')) %}border-b-2{% endif %}">
-                                  Datasets
-                          </a>
-                          <a href="{{ url_for('data.upload') }}"
-                               class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint == 'data.upload' %}border-b-2{% endif %}">
-                                  Upload
-                          </a>
-                    </div>
+                {% if current_user.is_authenticated %}
+                   <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <a href="{{ url_for('visual.index') }}"
+                       class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint.startswith('visual') %}border-b-2{% endif %}">
+                          Visualizations
+                    </a>
+                    <a href="{{ url_for('data.index') }}"
+                      class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2{% endif %}">
+                        Datasets 
+                    </a>
+                    <a href="{{ url_for('data.upload') }}"
+                        class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint == 'data.upload' %}border-b-2{% endif %}">
+                         Upload   
+                    </a>
+                   </div>
                     {% endif %}
                 </div>
                 <div class="hidden sm:ml-6 sm:flex sm:items-center">
@@ -106,10 +105,10 @@
                 <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint.startswith('visual') %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
                     Visualizations
                 </a>
-                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint.startswith('data') %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('data.index') }}" class="block pl-3 pr-4 py-2 text-base font-medium {% if request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}bg-highlight{% endif %}">
                     Datasets
                 </a>
-                <a href="{{ url_for('data.upload') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('data.upload') }}" class="block pl-3 pr-4 py-2 text-base font-medium {% if request.endpoint == 'data.upload' %}bg-highlight{% endif%} ">
                     Upload
                 </a>
                 {% else %}
