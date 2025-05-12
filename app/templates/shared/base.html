@@ -42,7 +42,7 @@
                         <a href="{{ url_for('visual.index') if current_user.is_authenticated else url_for('visual.welcome') }}" class="font-bold text-xl">
                             DynaDash
                         </a>
-                    <div>
+                    </div>
                 {% if current_user.is_authenticated %}
                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
                     <a href="{{ url_for('visual.index') }}"
