@@ -124,25 +124,5 @@
   </div>
 </div>
 
-<script>
-    function confirmAndSubmit() {
-      // show the modal instead of browser confirm()
-      document.getElementById('delete-account-modal')
-              .classList.remove('hidden');
-    }
-  
-    // cancel hides the modal
-    document.getElementById('cancel-delete-account')
-            .addEventListener('click', function(){
-      document.getElementById('delete-account-modal')
-              .classList.add('hidden');
-    });
-  
-    // confirm submits the hidden form
-    document.getElementById('confirm-delete-account')
-            .addEventListener('click', function(){
-      document.getElementById('delete-account-form')
-              .submit();
-    });
-</script>
+<script  src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 {% endblock %}
