@@ -85,7 +85,8 @@
                             </a>
                         {% endif %}
                         
-                        <button id="download-btn" class="block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-center font-bold py-2 px-4 rounded transition duration-300">
+                        <button id="download-btn" class="block w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-center font-bold py-2 px-4 rounded transition duration-300"
+                                data-download-url="{{ url_for('data.download', id=dataset.id) }}">
                             <i class="fas fa-download mr-1"></i> Download Dataset
                         </button>
                     </div>
@@ -179,30 +180,5 @@
 
 {% block scripts %}
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-<script>
-    $(document).ready(function() {
-        // Delete confirmation modal
-        const deleteModal = $('#delete-modal');
-        
-        $('#delete-btn').on('click', function() {
-            deleteModal.removeClass('hidden');
-        });
-        
-        $('#cancel-delete').on('click', function() {
-            deleteModal.addClass('hidden');
-        });
-        
-        // Close modal when clicking outside
-        $(window).on('click', function(event) {
-            if (event.target === deleteModal[0]) {
-                deleteModal.addClass('hidden');
-            }
-        });
-        
-        // Download dataset
-        $('#download-btn').on('click', function() {
-            window.location.href = "{{ url_for('data.download', id=dataset.id) }}";
-        });
-    });
-</script>
+<script src="{{ url_for('static', filename='js/view.js') }}" defer></script>
 {% endblock %}
