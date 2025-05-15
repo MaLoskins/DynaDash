@@ -1,6 +1,25 @@
 {% extends "shared/base.html" %}
 
 {% block title %}DynaDash - Dynamic Data Analytics{% endblock %}
+<!--
+{% block styles %}
+{{ super() }}
+<style>
+ 
+  .reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(30px); 
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out; 
+  }
+
+ 
+  .revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+{% endblock %}
+-->
 
 {% block content %}
 <div class="flex flex-col items-center justify-center py-12">
@@ -157,4 +176,35 @@
 {% block scripts %}
 <!-- Font Awesome for icons -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+<!--
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const revealElements = document.querySelectorAll('.reveal-on-scroll');
+
+    if (!revealElements.length) {
+        return; 
+    }
+
+    const observerOptions = {
+        root: null, 
+        rootMargin: '0px', 
+        threshold: 0.1 
+    };
+
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+       
+                observer.unobserve(entry.target); 
+            } 
+         
+        });
+    }, observerOptions);
+
+    revealElements.forEach(el => {
+        revealObserver.observe(el);
+    });
+});
+</script>-->
 {% endblock %}

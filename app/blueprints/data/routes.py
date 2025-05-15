@@ -146,11 +146,14 @@ def share(id):
         return redirect(url_for('data.share', id=id))
     
     # Get all users this dataset is shared with
-    shared_with = User.query.join(Share).filter(
-        Share.owner_id == current_user.id,
-        Share.object_type == 'dataset',
-        Share.object_id == dataset.id
-    ).all()
+    shared_with = User.query.join(
+    Share,  
+    User.id == Share.target_id  
+        ).filter(
+    Share.owner_id == current_user.id,  
+    Share.object_type == 'dataset',     
+    Share.object_id == dataset.id       
+        ).all()
     
     return render_template(
         'data/share.html',
