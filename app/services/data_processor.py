@@ -284,14 +284,27 @@ class DataProcessor:
         # Convert to HTML table
         return df.to_html(classes='table table-striped table-bordered table-hover', index=False)
     
-    def delete_dataset(self, dataset_id):
-        """Delete a dataset and its file."""
+    def delete_dataset(self, dataset_id):    
+        # Retrieve the Dataset object or return 404 if not found
         dataset = Dataset.query.get_or_404(dataset_id)
-        
-        # Delete the file
+
+        # 1) Attempt to remove the file from disk; log a warning if it does not exist or removal fails
         if os.path.exists(dataset.file_path):
-            os.remove(dataset.file_path)
-        
-        # Delete the dataset record
+            try:
+                os.remove(dataset.file_path)
+            except Exception as e:
+                current_app.logger.warning(
+                    f"Failed to remove dataset file at {dataset.file_path}: {e}"
+                )
+        else:
+            current_app.logger.warning(
+                f"Dataset file not found during deletion: {dataset.file_path}"
+            )
+
+        # 2) Cascade-delete all associated Visualisation records to satisfy NOT-NULL FK constraint
+        for vis in list(dataset.visualisations):
+            db.session.delete(vis)
+
+        # 3) Delete the Dataset record itself from the database
         db.session.delete(dataset)
         db.session.commit()
