@@ -2,8 +2,10 @@
 
 {% block content %}
 <div class="flex flex-col items-center justify-center min-h-screen text-center px-4 space-y-8 pt-12">
+    {# text-blue-600 is themed to magenta by main.css, including text-shadow effects #}
     <h1 class="text-5xl font-extrabold text-blue-600">Say Hello to DynaDash!</h1>
     
+    {# text-gray-700 is themed to text-secondary #}
     <p class="text-lg text-gray-700 max-w-3xl">
         Ever wished your data could tell its own story? With DynaDash, upload your private datasets and watch as Claude magically crafts eye-catching charts and insights. Curate your favourites, share them with friends, and explore data like never before—all in a flash!
     </p>
@@ -17,17 +19,19 @@
       { 'icon': '🤝', 'title': 'Share & Collaborate', 'desc': 'Pick datasets or charts and share with your crew.' },
       { 'icon': '📱', 'title': 'Fully Responsive',    'desc': 'Looks great on any device, thanks to Tailwind CSS.' }
     ] %}
+        {# .bg-white is themed to var(--card-bg) #}
+        {# Replaced Tailwind ring and drop-shadow with main.css themed shadow-glow on hover #}
         <div class="relative group
                     bg-white rounded-2xl 
                     transform hover:-translate-y-1
                     transition-transform duration-300 
-                    ring-0 hover:ring-4 hover:ring-pink-500/50
-                    ring-offset-2 ring-offset-gray-900 
-                    overflow-hidden
-                    filter hover:drop-shadow-[0_0_10px_rgba(236,72,153,0.6)]"
+                    ring-0 group-hover:shadow-glow-intense {# Use main.css glow #}
+                    ring-offset-2 ring-offset-gray-900 {# ring-offset might need adjustment with shadow glow #}
+                    overflow-hidden"
         >
             <div class="h-32 flex items-center justify-center">
-                <h2 class="text-2xl font-semibold group-hover:!text-pink-600 transition-colors duration-200">
+                 {# group-hover:!text-pink-600 changed to group-hover:text-magenta-primary for consistency #}
+                <h2 class="text-2xl font-semibold group-hover:text-magenta-primary transition-colors duration-200">
                   {{ feature.icon }} {{ feature.title }}
                 </h2>
             </div>
@@ -39,7 +43,8 @@
                        group-hover:delay-150
                        shadow-inner"
             >
-                <p class="text-gray-300">
+                {# text-gray-300 is a light gray, suitable on dark card. Corresponds to text-text-color-muted or lighter. #}
+                <p class="text-text-color-muted"> 
                    {{ feature.desc }}
                 </p>
             </div>

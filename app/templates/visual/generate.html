@@ -6,22 +6,26 @@
 <div class="py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Generate Dashboard</h1>
-            {# Ensure data.view exists or provide a fallback #}
+            <h1 class="text-3xl font-bold text-text-color">Generate Dashboard</h1>
+            {# Ensure data.view exists or provide a fallback. text-blue-600 is themed to magenta by main.css #}
             <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else url_for('visual.index') }}" class="text-blue-600 hover:text-blue-800">
                 <i class="fas fa-arrow-left mr-1"></i> Back to Dataset
             </a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Dataset Info -->
+            <!-- Dataset Info Card -->
             <div class="md:col-span-1">
+                {# .bg-white is themed to var(--card-bg) by main.css #}
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                    {# .border-gray-200 is themed to var(--border-color) by main.css #}
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Dataset Details</h2>
+                        <h2 class="text-lg font-semibold text-text-color">Dataset Details</h2>
                     </div>
                     <div class="p-4">
-                        <h3 class="font-medium text-gray-200 mb-1">{{ dataset.original_filename }}</h3>
+                        {# Changed text-gray-200 to text-text-color for better theme alignment #}
+                        <h3 class="font-medium text-text-color mb-1">{{ dataset.original_filename }}</h3>
+                        {# .text-gray-500 is themed to var(--text-secondary) by main.css #}
                         <p class="text-sm text-gray-500 mb-4">
                             {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
                         </p>
@@ -30,7 +34,8 @@
                         </p>
                         <p class="text-sm text-gray-500">
                             <span class="font-medium">Visibility:</span> 
-                            <span class="{{ 'text-green-600' if dataset.is_public else 'text-gray-800' }}">
+                            {# text-green-600 for public status is fine, uses --accent-green via Tailwind #}
+                            <span class="{{ 'text-green-600' if dataset.is_public else 'text-text-color' }}">
                                 {{ 'Public' if dataset.is_public else 'Private' }}
                             </span>
                         </p>
@@ -38,24 +43,25 @@
                 </div>
             </div>
             
-            <!-- Dashboard Form -->
+            <!-- Dashboard Form Card -->
             <div class="md:col-span-2">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Dashboard Options</h2>
+                        <h2 class="text-lg font-semibold text-text-color">Dashboard Options</h2>
                     </div>
                     <div class="p-4">
                         <form method="POST" action="{{ url_for('visual.generate', dataset_id=dataset.id) }}" id="dashboard-form">
                             {{ form.hidden_tag() }}
                             
                             <div class="mb-4">
-                                <label for="title" class="block text-sm font-medium text-gray-700">
-                                    {{ form.title.label }}
-                                </label>
+                                {# Rely on main.css for label styling; remove Tailwind classes #}
+                                {{ form.title.label }}
                                 <div class="mt-1">
-                                    {{ form.title(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md") }}
+                                    {# Rely on main.css for input styling; remove most Tailwind classes. Keep w-full if needed. #}
+                                    {{ form.title(class="w-full", placeholder="Enter a title for your dashboard") }}
                                     {% if form.title.errors %}
-                                        <div class="text-red-500 text-xs mt-1">
+                                        {# .text-red-500 is themed to var(--danger-light). Add invalid-feedback for potential icon/enhanced styling. #}
+                                        <div class="invalid-feedback text-xs mt-1">
                                             {% for error in form.title.errors %}
                                                 <span>{{ error }}</span>
                                             {% endfor %}
@@ -65,13 +71,11 @@
                             </div>
                             
                             <div class="mb-4">
-                                <label for="description" class="block text-sm font-medium text-gray-700">
-                                    {{ form.description.label }}
-                                </label>
+                                {{ form.description.label }}
                                 <div class="mt-1">
-                                    {{ form.description(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md", rows=3, placeholder="Describe what insights you're looking for or what aspects of the data you want to highlight...") }}
+                                    {{ form.description(class="w-full", rows=3, placeholder="Describe what insights you're looking for or what aspects of the data you want to highlight...") }}
                                     {% if form.description.errors %}
-                                        <div class="text-red-500 text-xs mt-1">
+                                        <div class="invalid-feedback text-xs mt-1">
                                             {% for error in form.description.errors %}
                                                 <span>{{ error }}</span>
                                             {% endfor %}
@@ -84,15 +88,17 @@
                             </div>
                             
                             <div class="mb-6">
-                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
-                                    <span class="text-blue-800 text-sm">
+                                {# Use .alert .alert-info for the note box #}
+                                <div class="alert alert-info">
+                                    <span class="text-sm"> {# main.css alert styles will handle text color #}
                                         <strong>Note:</strong> Claude will analyze your dataset and automatically create a fully interactive dashboard with multiple visualizations. This process may take up to 60-90 seconds for larger datasets.
                                     </span>
                                 </div>
                             </div>
                             
                             <div class="flex justify-end">
-                                {{ form.submit(class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500", value="Generate Dashboard", id="submit-button") }}
+                                {# Use .btn class for the submit button #}
+                                {{ form.submit(class="btn", value="Generate Dashboard", id="submit-button") }}
                             </div>
                         </form>
                     </div>
@@ -102,9 +108,11 @@
         
         <!-- Processing Modal -->
         <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+            {# Modal content uses CSS variables from main.css, which is good #}
             <div class="bg-card-bg rounded-lg shadow-lg p-6 max-w-md w-full border border-border-color">
                 <h3 class="text-xl font-bold text-text-color mb-4">Generating Dashboard</h3>
                 <div class="mb-4">
+                    {# progress-container and #progress-bar are styled by main.css #}
                     <div class="progress-container">
                         <div id="progress-bar" style="width: 0%"></div>
                     </div>
@@ -112,6 +120,7 @@
                 </div>
                 <div class="text-text-secondary text-sm">
                     <p class="mb-2">Claude is analyzing your data and creating a custom dashboard. This may take 60-90 seconds to complete.</p>
+                    {# steps-container and step-indicator are styled by main.css #}
                     <div id="steps-container" class="border border-border-color rounded p-2 mt-3">
                         <p class="text-xs text-text-tertiary mb-1">Current progress:</p>
                         <ul class="text-xs space-y-1">
@@ -138,7 +147,8 @@
                         </ul>
                     </div>
                 </div>
-                <div id="error-message-modal" class="mt-4 p-3 bg-red-100 border border-red-300 rounded text-red-700 text-sm hidden">
+                {# Use .alert .alert-danger for modal error message #}
+                <div id="error-message-modal" class="mt-4 alert alert-danger error-message hidden">
                     An error occurred. Please try again or contact support if the problem persists.
                 </div>
             </div>
@@ -173,15 +183,31 @@ document.addEventListener("DOMContentLoaded", function () {
             const indicatorEl = document.getElementById(step.indicator);
             const textEl = document.getElementById(step.text_el_id);
             if (indicatorEl && textEl) {
+                // Add 'step-active' for the current step based on percentage range
+                let isActive = false;
+                if (stepNum < Object.keys(steps).length) {
+                     const nextStepPercent = steps[parseInt(stepNum) + 1] ? steps[parseInt(stepNum) + 1].percent : 100;
+                     isActive = currentPercent >= step.percent && currentPercent < nextStepPercent;
+                } else { // Last step
+                     isActive = currentPercent >= step.percent;
+                }
+
                 if (currentPercent >= step.percent) {
-                    indicatorEl.classList.remove('bg-gray-300');
-                    indicatorEl.classList.add('step-completed'); // Or 'step-active' if it's the current one
+                    indicatorEl.classList.remove('bg-gray-300'); // remove explicit tailwind class if present
+                    indicatorEl.classList.add('step-completed');
                     textEl.classList.remove('text-text-tertiary');
-                    textEl.classList.add('text-text-color');
+                    textEl.classList.add('text-text-color'); // Or specific class for completed text
+                    if (isActive) {
+                        indicatorEl.classList.add('step-active');
+                        textEl.classList.add('active'); // Assuming .active is styled in CSS
+                    } else {
+                         indicatorEl.classList.remove('step-active');
+                         textEl.classList.remove('active');
+                    }
                 } else {
                      indicatorEl.classList.remove('step-completed', 'step-active');
-                     indicatorEl.classList.add('bg-gray-300');
-                     textEl.classList.remove('text-text-color');
+                     // indicatorEl.classList.add('bg-gray-300'); // Not needed if default is styled by main.css
+                     textEl.classList.remove('text-text-color', 'active');
                      textEl.classList.add('text-text-tertiary');
                 }
             }
@@ -191,55 +217,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (dashboardForm && processingModal && progressBar && progressLabel) {
         dashboardForm.addEventListener('submit', function(event) {
-            // Client-side validation can be added here if needed before showing modal
             processingModal.classList.remove('hidden');
             progressBar.style.width = '0%';
             progressLabel.textContent = 'Initializing...';
-            if(errorMessageModal) errorMessageModal.classList.add('hidden'); // Clear previous errors
-            updateStepIndicator(0); // Reset step indicators
-
-            // SocketIO event listeners are now in common.js
-            // This script just needs to trigger the submission
+            if(errorMessageModal) {
+                 errorMessageModal.classList.add('hidden');
+                 // Clear previous text if any, main.css might use :before for icon
+                 errorMessageModal.textContent = 'An error occurred. Please try again or contact support if the problem persists.';
+            }
+            updateStepIndicator(0); 
         });
     }
-
-    // This part will be handled by common.js now
-    // const socket = io(); // Assuming common.js initializes socket if user is authenticated
-    // if (typeof socket !== 'undefined') { // Check if socket was initialized
-    //     socket.on('progress_update', function(data) {
-    //         if (progressBar && progressLabel) {
-    //             progressBar.style.width = data.percent + '%';
-    //             progressLabel.textContent = data.message;
-    //             updateStepIndicator(data.percent);
-    //         }
-    //     });
-
-    //     socket.on('processing_complete', function(data) {
-    //         if (progressBar && progressLabel) {
-    //             progressBar.style.width = '100%';
-    //             progressLabel.textContent = 'Dashboard completed! Redirecting...';
-    //             updateStepIndicator(100);
-    //         }
-    //         if (data && data.redirect_url) {
-    //             window.location.href = data.redirect_url;
-    //         } else {
-    //             // Fallback if no redirect URL is provided
-    //             setTimeout(() => { processingModal.classList.add('hidden'); }, 2000);
-    //         }
-    //     });
-
-    //     socket.on('processing_error', function(data) {
-    //         if (processingModal && errorMessageModal && progressLabel) {
-    //             progressLabel.textContent = 'Error occurred.';
-    //             errorMessageModal.textContent = 'Error: ' + data.message;
-    //             errorMessageModal.classList.remove('hidden');
-    //             // Optionally hide modal after a delay or provide a close button
-    //             // setTimeout(() => { processingModal.classList.add('hidden'); }, 5000);
-    //         } else {
-    //             alert('Error: ' + data.message); // Fallback
-    //         }
-    //     });
-    // }
 });
 </script>
 {% endblock %}

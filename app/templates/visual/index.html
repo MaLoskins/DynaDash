@@ -1,7 +1,166 @@
 {% extends "shared/base.html" %}
 
-{% block title %}My Visualizations - DynaDash{% endblock %}
+{% block title %}My Dashboards - DynaDash{% endblock %} {# Changed title slightly for clarity #}
 
 {% block content %}
+<div class="py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-text-color">My Dashboards</h1>
+            {# Ensure the link to create new dashboard respects if data blueprint exists #}
+            <a href="{{ url_for('data.upload') if data_blueprint_exists_and_has_route('upload') else '#' }}" class="btn">
+                <i class="fas fa-plus mr-2"></i> Create New Dashboard
+            </a>
+        </div>
+
+        {# Section for User's Own Dashboards (Paginated) #}
+        {% if user_visualisations and user_visualisations.items %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for vis in user_visualisations.items %}  {# Iterate through paginated items #}
+                    <div class="bg-card-bg shadow-md rounded-lg overflow-hidden border border-border-color flex flex-col">
+                        <div class="p-4 border-b border-border-color">
+                            <h2 class="text-lg font-semibold text-text-color truncate" title="{{ vis.title }}">{{ vis.title }}</h2>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            {% if vis.description %}
+                                <p class="text-sm text-text-secondary mb-3 h-16 overflow-hidden text-ellipsis">{{ vis.description }}</p>
+                            {% else %}
+                                <p class="text-sm text-text-tertiary mb-3 h-16 italic">No description provided.</p>
+                            {% endif %}
+                            <p class="text-xs text-text-tertiary">
+                                Dataset: <span class="font-medium text-text-secondary">{{ vis.dataset.original_filename }}</span>
+                            </p>
+                            <p class="text-xs text-text-tertiary">
+                                Created: <span class="font-medium text-text-secondary">{{ vis.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                            </p>
+                        </div>
+                        <div class="p-4 bg-surface-1 border-t border-border-color flex justify-end space-x-2">
+                            <a href="{{ url_for('visual.view', id=vis.id) }}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-eye mr-1"></i> View
+                            </a>
+                            {# For user's own dashboards, vis.dataset.user_id will be current_user.id #}
+                            <a href="{{ url_for('visual.share', id=vis.id) }}" class="btn btn-accent-green btn-sm">
+                                <i class="fas fa-share-alt mr-1"></i> Share
+                            </a>
+                            <form action="{{ url_for('visual.delete', id=vis.id) }}" method="POST" class="inline m-0" onsubmit="return confirm('Are you sure you want to delete this dashboard?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash-alt mr-1"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            {# Pagination for User's Own Dashboards #}
+            {% if user_visualisations.has_prev or user_visualisations.has_next %}
+            <div class="mt-8 flex justify-center">
+                <nav aria-label="Pagination">
+                    <ul class="inline-flex items-center -space-x-px shadow-sm">
+                        {% if user_visualisations.has_prev %}
+                        <li>
+                            <a href="{{ url_for('visual.index', page=user_visualisations.prev_num) }}" class="btn btn-secondary btn-sm rounded-r-none">
+                                <i class="fas fa-chevron-left mr-1"></i> Previous
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% for page_num in user_visualisations.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                {% if user_visualisations.page == page_num %}
+                                <li>
+                                    <a href="#" class="btn btn-sm rounded-none" aria-current="page">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <a href="{{ url_for('visual.index', page=page_num) }}" class="btn btn-secondary btn-sm rounded-none">{{ page_num }}</a>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                                <li><span class="btn btn-secondary btn-sm rounded-none disabled">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if user_visualisations.has_next %}
+                        <li>
+                            <a href="{{ url_for('visual.index', page=user_visualisations.next_num) }}" class="btn btn-secondary btn-sm rounded-l-none">
+                                Next <i class="fas fa-chevron-right ml-1"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+        {% elif not shared_visualisations %} {# Only show "No Dashboards Yet" if BOTH lists are empty #}
+             <div class="bg-card-bg border border-border-color rounded-lg p-12 text-center">
+                <div class="text-text-tertiary text-5xl mb-4">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h2 class="text-2xl font-semibold text-text-color mb-3">No Dashboards Yet</h2>
+                <p class="text-text-secondary mb-6">
+                    It looks like you haven't created or been shared any dashboards.
+                </p>
+                <a href="{{ url_for('data.upload') if data_blueprint_exists_and_has_route('upload') else '#' }}" class="btn">
+                    <i class="fas fa-plus mr-2"></i> Create Your First Dashboard
+                </a>
+            </div>
+        {% endif %}
+
+        {# Section for Dashboards Shared With Me #}
+        {% if shared_visualisations %}
+            <div class="mt-12"> {# Add some margin from the user's dashboards section #}
+                <h2 class="text-2xl font-bold text-text-color mb-6">Shared With Me</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for vis_data in shared_visualisations %} {# Iterating through the list directly #}
+                        <div class="bg-card-bg shadow-md rounded-lg overflow-hidden border border-border-color flex flex-col">
+                            <div class="p-4 border-b border-border-color">
+                                <h2 class="text-lg font-semibold text-text-color truncate" title="{{ vis_data.title }}">{{ vis_data.title }}</h2>
+                            </div>
+                            <div class="p-4 flex-grow">
+                                {% if vis_data.description %}
+                                    <p class="text-sm text-text-secondary mb-3 h-16 overflow-hidden text-ellipsis">{{ vis_data.description }}</p>
+                                {% else %}
+                                    <p class="text-sm text-text-tertiary mb-3 h-16 italic">No description provided.</p>
+                                {% endif %}
+                                <p class="text-xs text-text-tertiary">
+                                    Dataset: <span class="font-medium text-text-secondary">{{ vis_data.dataset_filename }}</span>
+                                </p>
+                                <p class="text-xs text-text-tertiary">
+                                    Owner: <span class="font-medium text-text-secondary">{{ vis_data.owner_name }}</span>
+                                </p>
+                                <p class="text-xs text-text-tertiary">
+                                    Shared: <span class="font-medium text-text-secondary">{{ vis_data.created_at.strftime('%b %d, %Y %H:%M') }}</span> {# Using vis created_at #}
+                                </p>
+                            </div>
+                            <div class="p-4 bg-surface-1 border-t border-border-color flex justify-end space-x-2">
+                                <a href="{{ url_for('visual.view', id=vis_data.id) }}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-eye mr-1"></i> View
+                                </a>
+                                {# No share/delete for dashboards shared TO the user #}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {# You can add pagination for shared_visualisations here if it becomes a long list #}
+                {# To do that, you'd need to paginate shared_visualisations_query in the route as well #}
+            </div>
+        {% endif %}
+
+        {# Message if user has no personal dashboards but has shared ones #}
+        {% if user_visualisations and not user_visualisations.items and shared_visualisations %}
+            <div class="bg-card-bg border border-border-color rounded-lg p-12 text-center mt-8">
+                 <h2 class="text-2xl font-semibold text-text-color mb-3">No Personal Dashboards</h2>
+                <p class="text-text-secondary mb-6">
+                    You haven't created any dashboards yet. You can see dashboards shared with you above.
+                </p>
+                 <a href="{{ url_for('data.upload') if data_blueprint_exists_and_has_route('upload') else '#' }}" class="btn">
+                    <i class="fas fa-plus mr-2"></i> Create a Dashboard
+                </a>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
 <script src="{{ url_for('static', filename='js/visual.js') }}"></script>
 {% endblock %}

@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="py-8">
-    <div class="max-w-4xl mx-auto">
-        <div class="flex items-center justify-between mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Share Dataset</h1>
-            <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <h1 class="text-3xl">Share Dataset</h1>
+            <a href="{{ url_for('data.view', id=dataset.id) }}"> {# General link styling from main.css #}
                 <i class="fas fa-arrow-left mr-1"></i> Back to Dataset
             </a>
         </div>
@@ -15,29 +15,30 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- Dataset Info -->
             <div class="md:col-span-1">
-                <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Dataset Details</h2>
+                <div class="bg-white shadow-md rounded-lg overflow-hidden"> {# Card Style from main.css #}
+                    <div class="p-4 border-b">
+                        <h2 class="text-lg">Dataset Details</h2>
                     </div>
                     <div class="p-4">
-                        <h3 class="font-medium text-gray-200 mb-1">{{ dataset.original_filename }}</h3>
-                        <p class="text-sm text-gray-500 mb-4">
+                        <h3 class="mb-1">{{ dataset.original_filename }}</h3>
+                        <p class="text-sm mb-4">
                             {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
                         </p>
-                        <p class="text-sm text-gray-500">
-                            <span class="font-medium">Uploaded:</span> {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
+                        <p class="text-sm">
+                            <span class="font-medium" style="color: var(--text-color);">Uploaded:</span> {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
                         </p>
-                        <p class="text-sm text-gray-500">
-                            <span class="font-medium">Visibility:</span> 
-                            <span class="{{ 'text-green-600' if dataset.is_public else 'text-gray-800' }}">
+                        <p class="text-sm">
+                            <span class="font-medium" style="color: var(--text-color);">Visibility:</span> 
+                            {# text-green-600 is fine if it's the exact green desired. text-gray-800 is themed. #}
+                            <span class="{{ 'text-green-600' if dataset.is_public else '' }}">
                                 {{ 'Public' if dataset.is_public else 'Private' }}
                             </span>
                         </p>
                         
-                        <div class="mt-4 p-2 bg-gray-50 rounded">
-                            <div class="text-xs text-gray-500 mb-1">Preview:</div>
-                            <div class="h-32 flex items-center justify-center bg-gray-100 rounded">
-                                <span class="text-gray-400 text-sm">Dataset Preview</span>
+                        <div class="mt-4 p-2 bg-gray-50 rounded-md"> {# bg-gray-50 themed #}
+                            <div class="text-xs mb-1">Preview:</div>
+                            <div class="h-32 flex items-center justify-center bg-surface-1 rounded-md"> {# Use surface from main.css #}
+                                <span style="color: var(--text-tertiary);" class="text-sm">Dataset Preview</span>
                             </div>
                         </div>
                     </div>
@@ -46,21 +47,19 @@
             
             <!-- Share Form -->
             <div class="md:col-span-2">
-                <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Share with Users</h2>
+                <div class="bg-white shadow-md rounded-lg overflow-hidden"> {# Card Style from main.css #}
+                    <div class="p-4 border-b">
+                        <h2 class="text-lg">Share with Users</h2>
                     </div>
                     <div class="p-4">
                         <form method="POST" action="{{ url_for('data.share', id=dataset.id) }}">
                             {{ form.hidden_tag() }}
                             
-                            <div class="mb-6">
-                                <label for="user_id" class="block text-gray-700 text-sm font-bold mb-2">
-                                    {{ form.user_id.label }}
-                                </label>
-                                {{ form.user_id(class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline") }}
+                            <div class="form-group mb-6">
+                                {{ form.user_id.label(class="required") }} {# Uses enhanced label from main.css #}
+                                {{ form.user_id() }} {# Uses enhanced select from main.css, remove tailwind classes #}
                                 {% if form.user_id.errors %}
-                                    <div class="text-red-500 text-xs mt-1">
+                                    <div class="invalid-feedback"> {# Use .invalid-feedback from main.css #}
                                         {% for error in form.user_id.errors %}
                                             <span>{{ error }}</span>
                                         {% endfor %}
@@ -69,39 +68,35 @@
                             </div>
                             
                             <div class="flex justify-end">
-                                {{ form.submit(class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300") }}
+                                {{ form.submit(class="btn") }} {# Uses .btn from main.css #}
                             </div>
                         </form>
                         
                         <div class="mt-8">
-                            <h3 class="text-lg font-medium text-gray-700 mb-4">Currently Shared With</h3>
+                            <h3 class="text-lg mb-4">Currently Shared With</h3>
                             
                             {% if shared_with %}
-                                <div class="bg-white border rounded-lg overflow-hidden">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
+                                <div class="overflow-hidden"> {# Table itself has border-radius from main.css #}
+                                    <table class="min-w-full"> {# main.css table styles will apply #}
+                                        <thead> {# main.css thead styles will apply #}
                                             <tr>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    User
-                                                </th>
-                                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Actions
-                                                </th>
+                                                <th class="px-6 py-3 text-left">User</th>
+                                                <th class="px-6 py-3 text-right">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
+                                        <tbody> {# main.css tbody styles will apply #}
                                             {% for user in shared_with %}
                                                 <tr>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="flex items-center">
-                                                            <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                                                <span class="text-gray-500">{{ user.name[0] }}</span>
+                                                            <div class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-surface-2"> {# Use surface color #}
+                                                                <span style="color: var(--text-color);">{{ user.name[0] }}</span>
                                                             </div>
                                                             <div class="ml-4">
-                                                                <div class="text-sm font-medium text-gray-900">
+                                                                <div class="text-sm font-medium"> {# text-gray-900 re-themed #}
                                                                     {{ user.name }}
                                                                 </div>
-                                                                <div class="text-sm text-gray-500">
+                                                                <div class="text-sm"> {# text-gray-500 re-themed #}
                                                                     {{ user.email }}
                                                                 </div>
                                                             </div>
@@ -109,7 +104,7 @@
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <form action="{{ url_for('data.unshare', id=dataset.id, user_id=user.id) }}" method="POST" class="inline">
-                                                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                                            <button type="submit" class="text-danger"> {# Use .text-danger from main.css #}
                                                                 Remove
                                                             </button>
                                                         </form>
@@ -120,36 +115,34 @@
                                     </table>
                                 </div>
                             {% else %}
-                                <div class="bg-gray-50 rounded-lg p-6 text-center">
-                                    <div class="text-gray-400 text-4xl mb-3">
+                                <div class="bg-gray-50 rounded-lg p-6 text-center"> {# bg-gray-50 themed #}
+                                    <div style="color: var(--text-tertiary);" class="text-4xl mb-3">
                                         <i class="fas fa-users-slash"></i>
                                     </div>
-                                    <p class="text-gray-600">
-                                        This dataset is not shared with anyone yet.
-                                    </p>
+                                    <p>This dataset is not shared with anyone yet.</p>
                                 </div>
                             {% endif %}
                         </div>
                     </div>
                 </div>
                 
-                <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-blue-800 mb-2">Sharing Information</h3>
-                    <ul class="list-disc list-inside text-blue-700 space-y-1">
+                <div class="mt-6 alert alert-info"> {# Use .alert .alert-info from main.css #}
+                    <h3 class="text-lg font-semibold mb-2" style="color:var(--text-color)">Sharing Information</h3>
+                    <ul class="list-disc list-inside space-y-1" style="color:var(--text-color-muted)">
                         <li>Shared users can view but not modify your dataset</li>
                         <li>Shared users can create visualizations from your dataset</li>
                         <li>You can revoke access at any time</li>
                         <li>Users will be notified when you share a dataset with them</li>
                     </ul>
                     
-                    <div class="mt-4 p-3 bg-white rounded-lg border border-blue-100">
+                    <div class="mt-4 p-3 bg-card-bg rounded-lg border" style="border-color: var(--border-color-light);"> {# Use card-bg variable #}
                         <div class="flex items-center">
-                            <div class="text-blue-500 text-xl mr-3">
+                            <div style="color: var(--accent-blue);" class="text-xl mr-3"> {# Use accent-blue variable #}
                                 <i class="fas fa-lightbulb"></i>
                             </div>
                             <div>
-                                <h4 class="font-medium text-blue-800">Make Dataset Public</h4>
-                                <p class="text-sm text-blue-600">
+                                <h4 class="font-medium" style="color:var(--text-color)">Make Dataset Public</h4>
+                                <p class="text-sm" style="color:var(--text-color-muted)">
                                     Alternatively, you can make your dataset public so all users can access it.
                                 </p>
                             </div>
@@ -157,7 +150,7 @@
                         
                         <div class="mt-3">
                             <form action="{{ url_for('data.toggle_public', id=dataset.id) }}" method="POST">
-                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-center font-bold py-2 px-4 rounded transition duration-300">
+                                <button type="submit" class="btn btn-accent-blue w-full"> {# Use .btn .btn-accent-blue for this type of action #}
                                     {% if dataset.is_public %}
                                         Make Private
                                     {% else %}

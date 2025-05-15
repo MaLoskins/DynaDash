@@ -5,17 +5,17 @@
 {% block content %}
 <div class="py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Upload Dataset</h1>
-            <a href="{{ url_for('data.index') }}" class="text-blue-600 hover:text-blue-800">
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <h1 class="text-3xl">Upload Dataset</h1>
+            <a href="{{ url_for('data.index') }}"> {# General link style #}
                 <i class="fas fa-arrow-left mr-1"></i> Back to Datasets
             </a>
         </div>
         
-        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-            <div class="p-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-800">Upload a New Dataset</h2>
-                <p class="text-sm text-gray-500 mt-1">
+        <div class="bg-white shadow-md rounded-lg overflow-hidden"> {# Card style from main.css #}
+            <div class="p-4 border-b">
+                <h2 class="text-lg">Upload a New Dataset</h2>
+                <p class="text-sm mt-1">
                     Supported file types: CSV, JSON
                 </p>
             </div>
@@ -24,34 +24,34 @@
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-6">
-                        <div class="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg text-center" id="drop-zone">
+                        <div class="drop-zone" id="drop-zone"> {# Use .drop-zone class from main.css #}
                             <div class="space-y-2">
-                                <div class="text-gray-400 text-4xl">
+                                <div class="icon text-4xl"> {# .drop-zone .icon styled by main.css #}
                                     <i class="fas fa-file-upload"></i>
                                 </div>
-                                <div class="text-gray-700 font-medium">
+                                <div class="font-medium" style="color: var(--text-color-muted);">
                                     Drag and drop your file here
                                 </div>
-                                <div class="text-gray-500 text-sm">
+                                <div class="text-sm" style="color: var(--text-tertiary);">
                                     or
                                 </div>
                                 <div>
-                                    <label for="file" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded cursor-pointer transition duration-300">
-                                        Browse Files
-                                        {{ form.file(class="hidden", id="file") }}
+                                    <label for="file" class="btn btn-secondary"> {# Use .btn .btn-secondary for browse #}
+                                 
+                                        {{ form.file(class="hidden", id="file") }} {# input type="file" is styled by main.css #}
                                     </label>
                                 </div>
                             </div>
                             <div id="file-info" class="mt-4 hidden">
                                 <div class="flex items-center justify-center">
-                                    <div class="text-gray-700 font-medium" id="file-name"></div>
-                                    <button type="button" id="remove-file" class="ml-2 text-red-600 hover:text-red-800">
+                                    <div class="font-medium file-name-display" id="file-name" style="color: var(--text-color);"></div>
+                                    <button type="button" id="remove-file" class="ml-2 text-danger"> {# .text-danger for remove #}
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
                             </div>
                             {% if form.file.errors %}
-                                <div class="text-red-500 text-sm mt-2">
+                                <div class="invalid-feedback mt-2"> {# .invalid-feedback style #}
                                     {% for error in form.file.errors %}
                                         <span>{{ error }}</span>
                                     {% endfor %}
@@ -60,45 +60,44 @@
                         </div>
                     </div>
                     
-                    <div class="mb-6">   
-                        <label for="is_public" class="inline-flex items-center ml-2 block text-sm text-gray-900">
-                            {{ form.is_public(class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded") }}
-                            <span>Make this dataset public</span>
+                    <div class="mb-6 checkbox-container"> {# Use .checkbox-container for layout #}
+                        {{ form.is_public(id="is_public") }} {# Remove Tailwind, styled by main.css input[type="checkbox"] #}
+                        <label for="is_public"> {# Styled by main.css input[type="checkbox"] + label #}
+                           Make this dataset public
                         </label>
-                        
-                        <p class="text-xs text-gray-500 mt-1">
-                            Public datasets can be viewed by all users of the platform.
-                        </p>
                     </div>
+                    <p class="text-xs mt-1 mb-6" style="color: var(--text-tertiary);">
+                        Public datasets can be viewed by all users of the platform.
+                    </p>
                     
                     <div id="preview-container" class="mb-6 hidden">
-                        <h3 class="text-md font-medium text-gray-700 mb-2">Preview</h3>
-                        <div class="border border-gray-300 rounded-lg overflow-x-auto">
+                        <h3 class="text-md font-medium mb-2">Preview</h3>
+                        <div class="border rounded-lg overflow-x-auto" style="border-color: var(--border-color);">
                             <div id="preview-content" class="p-4"></div>
                         </div>
                     </div>
                     
-                    <div class="flex justify-end">
-                        <button type="button" id="preview-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded mr-2 transition duration-300 hidden">
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <button type="button" id="preview-btn" class="btn btn-secondary hidden">
                             Preview
                         </button>
-                        {{ form.submit(class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300") }}
+                        {{ form.submit(class="btn") }}
                     </div>
                 </form>
             </div>
         </div>
         
         <!-- Processing Modal -->
-        <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
-            <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">Processing Dataset</h3>
+        <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-modal">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full"> {# Card style, use var(--shadow-xl) #}
+                <h3 class="text-xl font-bold mb-4">Processing Dataset</h3>
                 <div class="mb-4">
-                    <div class="progress-container">
-                        <div id="progress-bar" style="width: 0%"></div>
+                    <div class="progress-container"> {# Styled by main.css #}
+                        <div id="progress-bar" style="width: 0%"></div> {# Styled by main.css #}
                     </div>
-                    <p id="progress-label" class="text-sm text-gray-600 mt-2">Initializing...</p>
+                    <p id="progress-label" class="text-sm mt-2">Initializing...</p> {# Styled by main.css #}
                 </div>
-                <p class="text-gray-600 text-sm">
+                <p class="text-sm">
                     Please wait while we process your dataset. This may take a few moments.
                 </p>
             </div>

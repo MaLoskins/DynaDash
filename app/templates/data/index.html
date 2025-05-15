@@ -5,42 +5,43 @@
 {% block content %}
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">My Datasets</h1>
-            <a href="{{ url_for('data.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                <i class="fas fa-upload mr-1"></i> Upload Dataset
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <h1 class="text-3xl">My Datasets</h1>
+            <a href="{{ url_for('data.upload') }}" class="btn">
+                <i class="fas fa-upload mr-2"></i> Upload Dataset
             </a>
         </div>
         
         <!-- User's Datasets -->
         <div class="mb-10">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Your Datasets</h2>
             
             {% if user_datasets %}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% for dataset in user_datasets %}
-                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                            <div class="p-4 border-b border-gray-200">
-                                <h3 class="font-medium text-gray-200 truncate">{{ dataset.original_filename }}</h3>
-                                <p class="text-sm text-gray-500">
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden"> {# .bg-white is themed as card by main.css #}
+                            <div class="p-4 border-b"> {# border-gray-200 re-themed to var(--border-color) #}
+                                <h3 class="truncate">{{ dataset.original_filename }}</h3>
+                                <p class="text-sm"> {# text-gray-500 re-themed to var(--text-secondary) #}
                                     {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
                                 </p>
                             </div>
-                            <div class="p-4 bg-gray-50">
-                                <p class="text-xs text-gray-500 mb-2">
+                            <div class="p-4 bg-gray-50"> {# bg-gray-50 re-themed by main.css #}
+                                <p class="text-xs mb-2"> {# text-gray-500 re-themed #}
                                     Uploaded: {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
                                 </p>
-                                <p class="text-xs text-gray-500 mb-3">
+                                <p class="text-xs mb-3"> {# text-gray-500 re-themed #}
                                     Status: 
-                                    <span class="{{ 'text-green-600' if dataset.is_public else 'text-gray-600' }}">
+                                    {# text-green-600 is a Tailwind class, main.css doesn't override it. color var(--success) might be better if available as class #}
+                                    {# text-gray-600 is re-themed to var(--text-secondary) #}
+                                    <span class="{{ 'text-green-600' if dataset.is_public else 'text-secondary' }}">
                                         {{ 'Public' if dataset.is_public else 'Private' }}
                                     </span>
                                 </p>
                                 <div class="flex justify-between">
-                                    <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                                    <a href="{{ url_for('data.view', id=dataset.id) }}"> {# General link style from main.css #}
                                         View <i class="fas fa-arrow-right ml-1"></i>
                                     </a>
-                                    <a href="{{ url_for('data.share', id=dataset.id) }}" class="text-green-600 hover:text-green-800">
+                                    <a href="{{ url_for('data.share', id=dataset.id) }}" class="text-success"> {# Assuming a .text-success class for this specific link color or use default link #}
                                         Share <i class="fas fa-share-alt ml-1"></i>
                                     </a>
                                 </div>
@@ -49,15 +50,15 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="bg-white shadow-md rounded-lg p-6 text-center">
-                    <div class="text-gray-400 text-4xl mb-3">
+                <div class="bg-white shadow-md rounded-lg p-6 text-center"> {# .bg-white themed as card #}
+                    <div class="text-4xl mb-3" style="color: var(--text-tertiary);"> {# Using CSS var for icon color #}
                         <i class="fas fa-database"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">No Datasets Yet</h3>
-                    <p class="text-gray-600 mb-4">
+                    <h3 class="text-lg mb-2">No Datasets Yet</h3>
+                    <p class="mb-4"> {# text-gray-600 re-themed #}
                         You haven't uploaded any datasets yet. Upload your first dataset to get started!
                     </p>
-                    <a href="{{ url_for('data.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <a href="{{ url_for('data.upload') }}" class="btn">
                         Upload Dataset
                     </a>
                 </div>
@@ -67,26 +68,26 @@
         <!-- Shared Datasets -->
         {% if shared_datasets %}
             <div class="mb-10">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Shared With You</h2>
+                <h2 class="text-2xl mb-4">Shared With You</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% for dataset in shared_datasets %}
                         <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                            <div class="p-4 border-b border-gray-200">
-                                <h3 class="font-medium text-gray-200 truncate">{{ dataset.original_filename }}</h3>
-                                <p class="text-sm text-gray-500">
+                            <div class="p-4 border-b">
+                                <h3 class="truncate">{{ dataset.original_filename }}</h3>
+                                <p class="text-sm">
                                     {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
                                 </p>
                             </div>
                             <div class="p-4 bg-gray-50">
-                                <p class="text-xs text-gray-500 mb-2">
+                                <p class="text-xs mb-2">
                                     Owner: {{ dataset.owner.name }}
                                 </p>
-                                <p class="text-xs text-gray-500 mb-3">
+                                <p class="text-xs mb-3">
                                     Uploaded: {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
                                 </p>
                                 <div class="flex justify-end">
-                                    <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                                    <a href="{{ url_for('data.view', id=dataset.id) }}">
                                         View <i class="fas fa-arrow-right ml-1"></i>
                                     </a>
                                 </div>
@@ -100,26 +101,26 @@
         <!-- Public Datasets -->
         {% if public_datasets %}
             <div>
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Public Datasets</h2>
+                <h2 class="text-2xl mb-4">Public Datasets</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% for dataset in public_datasets %}
                         <div class="bg-white shadow-md rounded-lg overflow-hidden">
-                            <div class="p-4 border-b border-gray-200">
-                                <h3 class="font-medium text-gray-200 truncate">{{ dataset.original_filename }}</h3>
-                                <p class="text-sm text-gray-500">
+                            <div class="p-4 border-b">
+                                <h3 class="truncate">{{ dataset.original_filename }}</h3>
+                                <p class="text-sm">
                                     {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
                                 </p>
                             </div>
                             <div class="p-4 bg-gray-50">
-                                <p class="text-xs text-gray-500 mb-2">
+                                <p class="text-xs mb-2">
                                     Owner: {{ dataset.owner.name }}
                                 </p>
-                                <p class="text-xs text-gray-500 mb-3">
+                                <p class="text-xs mb-3">
                                     Uploaded: {{ dataset.uploaded_at.strftime('%b %d, %Y') }}
                                 </p>
                                 <div class="flex justify-end">
-                                    <a href="{{ url_for('data.view', id=dataset.id) }}" class="text-blue-600 hover:text-blue-800">
+                                    <a href="{{ url_for('data.view', id=dataset.id) }}">
                                         View <i class="fas fa-arrow-right ml-1"></i>
                                     </a>
                                 </div>

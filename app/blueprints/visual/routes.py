@@ -144,10 +144,18 @@ def welcome():
 @login_required
 def index():
     """Display the visualizations gallery."""
-    user_visualisations = Visualisation.query.join(Dataset).filter(
+    page = request.args.get('page', 1, type=int)
+    # And then: per_page = current_app.config.get('ITEMS_PER_PAGE', 6)
+    per_page = 6 
+
+    # Paginate user's own visualisations
+    # The variable passed to the template will be user_visualisations (a pagination object)
+    user_visualisations_pagination = Visualisation.query.join(Dataset).filter(
         Dataset.user_id == current_user.id
-    ).order_by(Visualisation.created_at.desc()).all()
+    ).order_by(Visualisation.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     
+    # Shared visualisations (currently not paginated in this example, but could be if needed)
+    # This remains a list
     shared_visualisations_query = db.session.query(Visualisation, User.name.label("owner_name")).\
         select_from(Share).\
         join(Visualisation, Share.object_id == Visualisation.id).\
@@ -158,7 +166,7 @@ def index():
             Share.object_type == 'visualisation'
         ).order_by(Visualisation.created_at.desc())
     
-    shared_visualisations_list = [] # Renamed to avoid conflict
+    shared_visualisations_list = [] 
     for vis, owner_name in shared_visualisations_query.all():
         shared_visualisations_list.append({
             'id': vis.id,
@@ -172,8 +180,8 @@ def index():
     return render_template(
         'visual/index.html',
         title='My Dashboards',
-        user_visualisations=user_visualisations,
-        shared_visualisations=shared_visualisations_list # Use the new list name
+        user_visualisations=user_visualisations_pagination, # Pass the pagination object
+        shared_visualisations=shared_visualisations_list 
     )
 
 @visual.route('/generate/<int:dataset_id>', methods=['GET', 'POST'])
@@ -321,8 +329,25 @@ def share(id):
         return redirect(url_for('visual.index'))
     
     form = ShareVisualisationForm()
-    users = User.query.filter(User.id != current_user.id).order_by(User.name).all()
-    form.user_id.choices = [(user.id, f"{user.name} ({user.email})") for user in users]
+    # Fetch users excluding the current user and those already shared with for this specific visualization
+    # This makes the dropdown more user-friendly.
+    
+    # Get IDs of users already shared with for this visualization
+    already_shared_user_ids = [
+        share_record.target_id for share_record in Share.query.filter_by(
+            owner_id=current_user.id,
+            object_type='visualisation',
+            object_id=id
+        ).all()
+    ]
+    
+    # Users available to share with (not current user, not already shared with for this viz)
+    available_users_to_share = User.query.filter(
+        User.id != current_user.id,
+        User.id.notin_(already_shared_user_ids) # Exclude users already shared with
+    ).order_by(User.name).all()
+
+    form.user_id.choices = [(user.id, f"{user.name} ({user.email})") for user in available_users_to_share]
     
     if form.validate_on_submit():
         target_user_id = form.user_id.data
@@ -331,6 +356,7 @@ def share(id):
         if not target_user:
             flash('Selected user not found.', 'danger')
         else:
+            # This check for existing_share is already good
             existing_share = Share.query.filter_by(
                 owner_id=current_user.id,
                 target_id=target_user_id,
@@ -341,7 +367,7 @@ def share(id):
             if existing_share:
                 flash(f'This dashboard is already shared with {target_user.name}.', 'warning')
             else:
-                new_share = Share( # Renamed to avoid conflict
+                new_share = Share( 
                     owner_id=current_user.id,
                     target_id=target_user_id,
                     object_type='visualisation',
@@ -350,12 +376,13 @@ def share(id):
                 db.session.add(new_share)
                 db.session.commit()
                 flash(f'Dashboard shared successfully with {target_user.name}!', 'success')
-        return redirect(url_for('visual.share', id=id))
+        return redirect(url_for('visual.share', id=id)) # Redirect to refresh the page and list
     
-    shared_with_users = db.session.query(User).join(Share, Share.target_id == User.id).filter(
+    # This is the crucial part: Fetch users this visualization is currently shared with
+    shared_with_users_query = db.session.query(User).join(Share, Share.target_id == User.id).filter(
         Share.owner_id == current_user.id,
         Share.object_type == 'visualisation',
-        Share.object_id == id
+        Share.object_id == id # Filter by the specific visualisation ID
     ).all()
     
     return render_template(
@@ -364,9 +391,8 @@ def share(id):
         visualisation=visualisation,
         dataset=visualisation.dataset, 
         form=form,
-        shared_with_users=shared_with_users # Renamed from shared_with
+        shared_with=shared_with_users_query # Pass this list as 'shared_with'
     )
-
 @visual.route('/unshare/<int:id>/<int:user_id>', methods=['POST'])
 @login_required
 def unshare(id, user_id):

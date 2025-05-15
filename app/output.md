@@ -84,7 +84,7 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask, redirect, url_for, request # Removed flask_current_app alias as it's not needed here
+from flask import Flask, redirect, url_for, request, current_app as flask_current_app_proxy
 from flask_login import LoginManager, current_user
 from flask_socketio import SocketIO
 from flask_migrate import Migrate
@@ -118,7 +118,6 @@ def create_app(config_name='default'):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
-    # Initialize extensions with app
     db.init_app(app) 
     login_manager.init_app(app)
     socketio.init_app(app, async_mode=app.config.get('SOCKETIO_ASYNC_MODE', 'threading'), cors_allowed_origins=app.config.get('CORS_ALLOWED_ORIGINS', '*'))
@@ -132,22 +131,17 @@ def create_app(config_name='default'):
     app.logger.propagate = False
 
     if app.debug or app.testing:
-        # Use Flask's default logger which logs to stderr in debug mode
         app.logger.setLevel(logging.DEBUG)
-        # Example of adding a stream handler if more control is needed in dev
-        # console_handler = logging.StreamHandler()
-        # console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        # console_handler.setFormatter(console_formatter)
-        # app.logger.addHandler(console_handler)
         app.logger.info(f"DynaDash starting in {config_name} mode (DEBUG={app.debug}, TESTING={app.testing})")
     else:
         logs_dir_config = app.config.get('LOGS_DIR')
-        if logs_dir_config:
+        if logs_dir_config and os.path.isabs(logs_dir_config):
             logs_dir = logs_dir_config
-        elif os.path.isabs(os.path.join(app.root_path, '..', 'logs')): # if app is a subdir
-            logs_dir = os.path.join(app.root_path, '..', 'logs')
-        else: # default to logs dir at project root
+        elif logs_dir_config: # Relative path from instance
+             logs_dir = os.path.join(app.instance_path, logs_dir_config)
+        else: # Default to 'logs' directory at project root (one level above app package)
             logs_dir = os.path.join(os.path.dirname(app.root_path), 'logs')
+
 
         if not os.path.exists(logs_dir):
             os.makedirs(logs_dir, exist_ok=True)
@@ -170,18 +164,15 @@ def create_app(config_name='default'):
     @app.before_request
     def log_request_info():
         if not request.path.startswith('/static/'):
-            app.logger.info(
+            app.logger.info( # Use app.logger here
                 f'{request.method} {request.path} from {request.remote_addr} '
                 f'user={getattr(current_user, "id", "anonymous")}'
             )
     
     upload_folder_path = app.config.get('UPLOAD_FOLDER', 'uploads')
     if not os.path.isabs(upload_folder_path):
-        # Using app.instance_path is generally preferred for user-uploaded content
-        # as it's outside the app package.
         upload_folder_path = os.path.join(app.instance_path, upload_folder_path) 
     
-    # Ensure the directory for uploads exists (including parent if using instance_path)
     if not os.path.exists(os.path.dirname(upload_folder_path)):
          os.makedirs(os.path.dirname(upload_folder_path), exist_ok=True)
     os.makedirs(upload_folder_path, exist_ok=True)
@@ -190,13 +181,16 @@ def create_app(config_name='default'):
     from .blueprints.auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint)
     
+    # Data Blueprint Registration (handle potential absence)
+    data_blueprint_registered = False
     try:
         from .blueprints.data import data as data_blueprint
         app.register_blueprint(data_blueprint)
-        app.logger.info("Data blueprint registered.")
+        app.logger.info("Data blueprint registered successfully.")
+        data_blueprint_registered = True
     except ImportError:
-        app.logger.warning("Data blueprint (app.blueprints.data) not found or could not be imported. Skipping registration.")
-    except Exception as e: # Catch other potential errors during data blueprint registration
+        app.logger.warning("Data blueprint (app.blueprints.data) not found or could not be imported. Related routes will not be available.")
+    except Exception as e:
         app.logger.error(f"Error registering data blueprint: {e}", exc_info=True)
 
     from .blueprints.visual import visual as visual_blueprint
@@ -222,8 +216,27 @@ def create_app(config_name='default'):
             return redirect(url_for('visual.welcome'))
         
     @app.context_processor
-    def inject_csrf_token():
-        return dict(csrf_token=generate_csrf)
+    def utility_processor():
+        def data_blueprint_exists_and_has_route(route_name):
+            if not data_blueprint_registered:
+                return False
+            # Check if the specific route exists on the data blueprint
+            # This requires the blueprint to be imported and checked,
+            # or rely on url_for to raise an error if not found,
+            # which we are trying to avoid in the template directly.
+            # A simple check for registration is a good first step.
+            # For a more precise check, you'd need to inspect app.url_map
+            # or maintain a list of expected routes.
+            # For now, just checking registration status.
+            # To check specific endpoint: f"data.{route_name}" in app.view_functions
+            return f"data.{route_name}" in app.view_functions
+
+        return dict(
+            csrf_token=generate_csrf,
+            data_blueprint_exists_and_has_route=data_blueprint_exists_and_has_route,
+            # Make flask_current_app_proxy available to templates as current_app
+            current_app=flask_current_app_proxy
+        )
 
     return app
 ```
@@ -2265,3389 +2278,7 @@ def handle_join(data):
 ### /mnt/c/Users/matth/Desktop/2-DSM/AgileWeb/Dynadash-15-05-25/DynaDash/app/static/css/main.css
 
 ```
-/* DynaDash Main Stylesheet */
-
-/* Global Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-:root {
-    /* Core Colors - Enhanced Palette */
-    --dark-bg: #1a1a1a;
-    --darker-bg: #121212;
-    --darkest-bg: #0a0a0a;
-    --card-bg: #242424;
-    --card-bg-hover: #2a2a2a;
-    --card-bg-active: #303030;
-    --surface-1: #1e1e1e;
-    --surface-2: #282828;
-    --surface-3: #323232;
-    --surface-4: #3d3d3d;
-    
-    /* Text Colors */
-    --text-color: #f2f2f2;
-    --text-color-muted: #d4d4d4;
-    --text-secondary: #b8b8b8;
-    --text-tertiary: #909090;
-    --text-disabled: #707070;
-    --text-inverse: #121212;
-    
-    /* Magenta Palette */
-    --magenta-primary: #e83e8c;
-    --magenta-light: #ff4fa3;
-    --magenta-lighter: #ff7db8;
-    --magenta-dark: #c01b65;
-    --magenta-darker: #9c1452;
-    --magenta-muted: #a51d5d;
-    --magenta-secondary: #800335;
-    --magenta-glow: rgba(232, 62, 140, 0.6);
-    --magenta-glow-strong: rgba(232, 62, 140, 0.8);
-    --magenta-glow-subtle: rgba(232, 62, 140, 0.3);
-    --magenta-glow-faint: rgba(232, 62, 140, 0.15);
-    
-    /* Accent Colors */
-    --accent-blue: #4285f4;
-    --accent-blue-light: #6ea8fe;
-    --accent-blue-dark: #1a73e8;
-    --accent-cyan: #2bc4e9;
-    --accent-cyan-light: #5bd1ef;
-    --accent-cyan-dark: #0ba9d4;
-    --accent-purple: #9c27b0;
-    --accent-purple-light: #bb47d3;
-    --accent-purple-dark: #7b1fa2;
-    --accent-green: #28a745;
-    --accent-green-light: #48c565;
-    --accent-green-dark: #1e7e34;
-    --accent-amber: #ffc107;
-    --accent-amber-light: #ffcd39;
-    --accent-amber-dark: #d39e00;
-    --accent-red: #dc3545;
-    --accent-red-light: #e35d6a;
-    --accent-red-dark: #bd2130;
-    
-    /* Interface Colors */
-    --border-color: #333;
-    --border-color-light: #444;
-    --border-color-lighter: #555;
-    --border-color-focus: #666;
-    --highlight: #2d2d2d;
-    --highlight-hover: #3a3a3a;
-    --highlight-active: #404040;
-    --divider: rgba(255, 255, 255, 0.1);
-    --divider-subtle: rgba(255, 255, 255, 0.05);
-    
-    /* Status Colors */
-    --success: #28a745;
-    --success-light: #48c565;
-    --success-dark: #1e7e34;
-    --warning: #ffc107;
-    --warning-light: #ffcd39;
-    --warning-dark: #d39e00;
-    --danger: #dc3545;
-    --danger-light: #e35d6a;
-    --danger-dark: #bd2130;
-    --info: var(--magenta-light);
-    --info-light: var(--magenta-lighter);
-    --info-dark: var(--magenta-dark);
-    
-    /* Shadows - Enhanced Depth */
-    --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.15);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.5);
-    --shadow-2xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-    --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-inset-deep: inset 0 3px 6px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 15px var(--magenta-glow);
-    --shadow-glow-intense: 0 0 20px var(--magenta-glow-strong);
-    --shadow-glow-subtle: 0 0 12px var(--magenta-glow-subtle);
-    --shadow-glow-faint: 0 0 8px var(--magenta-glow-faint);
-    
-    /* Gradients */
-    --gradient-bg: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
-    --gradient-card: linear-gradient(160deg, var(--card-bg) 0%, var(--card-bg-hover) 100%);
-    --gradient-card-hover: linear-gradient(160deg, var(--card-bg-hover) 0%, var(--card-bg-active) 100%);
-    --gradient-magenta: linear-gradient(90deg, var(--magenta-primary) 0%, var(--magenta-light) 100%);
-    --gradient-magenta-dark: linear-gradient(90deg, var(--magenta-dark) 0%, var(--magenta-primary) 100%);
-    --gradient-magenta-subtle: linear-gradient(90deg, rgba(232, 62, 140, 0.8) 0%, rgba(255, 79, 163, 0.8) 100%);
-    --gradient-dark-overlay: linear-gradient(rgba(26, 26, 26, 0.8), rgba(18, 18, 18, 0.9));
-    --gradient-glow-overlay: linear-gradient(rgba(232, 62, 140, 0.05), rgba(26, 26, 26, 0.9));
-    --gradient-surface: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-2) 100%);
-    --gradient-button: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%);
-    
-    /* Typography */
-    --font-weight-light: 300;
-    --font-weight-regular: 400;
-    --font-weight-medium: 500;
-    --font-weight-semibold: 600;
-    --font-weight-bold: 700;
-    --font-weight-extrabold: 800;
-    --letter-spacing-tightest: -1px;
-    --letter-spacing-tighter: -0.5px;
-    --letter-spacing-tight: -0.25px;
-    --letter-spacing-normal: 0;
-    --letter-spacing-wide: 0.5px;
-    --letter-spacing-wider: 1px;
-    --letter-spacing-widest: 1.5px;
-    --line-height-none: 1;
-    --line-height-tight: 1.1;
-    --line-height-compact: 1.25;
-    --line-height-normal: 1.5;
-    --line-height-relaxed: 1.75;
-    --line-height-loose: 2;
-    --font-size-xs: 0.75rem;
-    --font-size-sm: 0.875rem;
-    --font-size-base: 1rem;
-    --font-size-lg: 1.125rem;
-    --font-size-xl: 1.25rem;
-    --font-size-2xl: 1.5rem;
-    --font-size-3xl: 1.875rem;
-    --font-size-4xl: 2.25rem;
-    
-    /* Transitions */
-    --transition-fastest: 0.1s ease-in-out;
-    --transition-fast: 0.15s ease-in-out;
-    --transition-normal: 0.25s ease-in-out;
-    --transition-slow: 0.4s ease-in-out;
-    --transition-slowest: 0.6s ease-in-out;
-    --transition-bounce: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-decelerate: 0.3s cubic-bezier(0, 0, 0.2, 1);
-    --transition-accelerate: 0.3s cubic-bezier(0.4, 0, 1, 1);
-    
-    /* Border Radius */
-    --radius-sm: 0.25rem;
-    --radius-md: 0.375rem;
-    --radius-lg: 0.5rem;
-    --radius-xl: 0.75rem;
-    --radius-2xl: 1rem;
-    --radius-full: 9999px;
-    
-    /* Z-index */
-    --z-negative: -1;
-    --z-base: 1;
-    --z-dropdown: 10;
-    --z-sticky: 20;
-    --z-fixed: 30;
-    --z-modal: 40;
-    --z-popover: 50;
-    --z-tooltip: 60;
-}
-
-/* Body theming */
-body {
-    background-color: var(--dark-bg);
-    background-image: var(--gradient-bg);
-    color: var(--text-color);
-    line-height: var(--line-height-normal);
-    transition: background-color var(--transition-slow);
-}
-
-/* Text colors */
-.text-gray-700, .text-gray-600, .text-gray-500 {
-    color: var(--text-secondary) !important;
-}
-
-/* Blue text overrides */
-.text-blue-600, .text-blue-500, .text-blue-700 {
-    color: var(--magenta-primary) !important;
-}
-
-/* Navigation styling - Enhanced with depth effects */
-nav {
-    background-color: var(--darker-bg) !important;
-    background-image: linear-gradient(
-        170deg,
-        var(--darkest-bg) 0%,
-        var(--darker-bg) 65%,
-        var(--surface-1) 100%
-    ) !important;
-    border-bottom: 1px solid var(--border-color);
-    box-shadow:
-        0 3px 15px rgba(0, 0, 0, 0.4),
-        0 0 2px var(--magenta-glow-faint),
-        inset 0 1px 1px rgba(255, 255, 255, 0.05);
-    position: relative;
-    z-index: var(--z-fixed);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-}
-
-/* Add subtle depth effect to navbar */
-nav:after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        var(--magenta-glow-faint) 15%,
-        var(--magenta-glow-subtle) 50%,
-        var(--magenta-glow-faint) 85%,
-        transparent 100%);
-    opacity: 0.5;
-    z-index: -1;
-    animation: pulseGlow 4s infinite alternate ease-in-out;
-}
-
-@keyframes pulseGlow {
-    0% { opacity: 0.3; }
-    100% { opacity: 0.6; }
-}
-
-/* Add some glow to the header */
-nav a.font-bold {
-    color: var(--magenta-light) !important;
-    text-shadow: var(--shadow-glow);
-    transition: all var(--transition-bounce);
-    font-weight: var(--font-weight-semibold);
-    letter-spacing: var(--letter-spacing-wide);
-    position: relative;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius-sm);
-}
-
-nav a.font-bold:hover {
-    color: var(--magenta-lighter) !important;
-    text-shadow: var(--shadow-glow-intense);
-    transform: translateY(-2px) scale(1.03);
-}
-
-nav a.font-bold:after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--magenta-primary), transparent);
-    transform: scaleX(0);
-    transition: transform var(--transition-bounce);
-    transform-origin: center;
-}
-
-nav a.font-bold:hover:after {
-    transform: scaleX(1);
-}
-
-/* Navigation links - Enhanced states */
-nav a {
-    color: var(--text-color) !important;
-    transition: all var(--transition-normal), background-position 0.5s ease;
-    letter-spacing: var(--letter-spacing-normal);
-    position: relative;
-    overflow: hidden;
-    background-image: linear-gradient(
-        to bottom,
-        transparent 0%,
-        transparent 90%,
-        var(--magenta-glow-faint) 90%,
-        var(--magenta-glow-faint) 100%
-    );
-    background-size: 100% 200%;
-    background-position: 0 0;
-    padding: 0.65rem 1rem;
-    margin: 0 0.15rem;
-    border-radius: var(--radius-sm);
-}
-
-nav a:hover {
-    color: var(--text-color) !important;
-    background-color: var(--highlight-hover) !important;
-    transform: translateY(-2px);
-    box-shadow:
-        var(--shadow-sm),
-        0 0 8px var(--magenta-glow-faint);
-    background-position: 0 100%;
-}
-
-nav a:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at center, var(--magenta-glow-faint) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity var(--transition-bounce);
-    z-index: -1;
-}
-
-nav a:hover:before {
-    opacity: 0.6;
-    animation: pulseNav 1.5s infinite alternate ease-in-out;
-}
-
-@keyframes pulseNav {
-    0% { opacity: 0.4; }
-    100% { opacity: 0.7; }
-}
-
-/* Active nav items */
-nav a.border-b-2 {
-    border-color: var(--magenta-primary) !important;
-    box-shadow:
-        0 4px 10px -4px var(--magenta-glow-subtle),
-        inset 0 -2px 0 var(--magenta-glow-subtle);
-    background-color: var(--highlight-hover) !important;
-}
-
-nav a.border-b-2:after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        var(--magenta-primary) 20%,
-        var(--magenta-light) 50%,
-        var(--magenta-primary) 80%,
-        transparent 100%);
-    animation: borderGlow 2s infinite alternate ease-in-out;
-}
-
-@keyframes borderGlow {
-    0% { opacity: 0.7; box-shadow: 0 0 4px var(--magenta-glow-faint); }
-    100% { opacity: 1; box-shadow: 0 0 8px var(--magenta-glow-subtle); }
-}
-
-/* User menu button - Enhanced styling */
-#user-menu-button {
-    background-color: var(--magenta-dark) !important;
-    background-image:
-        radial-gradient(
-            circle at 70% 30%,
-            var(--magenta-primary) 0%,
-            var(--magenta-dark) 50%,
-            var(--magenta-darker) 100%
-        );
-    transition: all var(--transition-bounce);
-    box-shadow:
-        var(--shadow-sm),
-        inset 0 1px 1px rgba(255, 255, 255, 0.2),
-        inset 0 -1px 1px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-    position: relative;
-    transform-origin: center;
-}
-
-#user-menu-button:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 1;
-}
-
-#user-menu-button:hover:before {
-    left: 100%;
-}
-
-#user-menu-button:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.2) 100%);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-}
-
-#user-menu-button:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow:
-        var(--shadow-md),
-        0 0 15px var(--magenta-glow),
-        inset 0 1px 2px rgba(255, 255, 255, 0.3);
-}
-
-#user-menu-button:hover:after {
-    opacity: 1;
-}
-
-#user-menu-button:focus {
-    ring-color: var(--magenta-primary) !important;
-    box-shadow: var(--shadow-glow-intense), 0 0 0 2px var(--magenta-glow-subtle);
-}
-
-/* User avatar - Enhanced styling */
-.rounded-full.bg-blue-300,
-.rounded-full.bg-blue-500,
-.rounded-full.bg-blue-600,
-.rounded-full.bg-blue-700 {
-    background-color: var(--magenta-primary) !important;
-    background-image:
-        radial-gradient(
-            circle at 30% 20%,
-            var(--magenta-light) 0%,
-            var(--magenta-primary) 60%,
-            var(--magenta-dark) 100%
-        ) !important;
-    color: var(--text-color) !important;
-    box-shadow:
-        inset 0 2px 4px rgba(255, 255, 255, 0.15),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.25),
-        0 0 8px var(--magenta-glow-faint);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-    font-weight: var(--font-weight-medium);
-    transition: all var(--transition-bounce);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-/* User dropdown menu - Enhanced with animations */
-#user-menu {
-    background-color: var(--card-bg) !important;
-    background-image:
-        linear-gradient(
-            135deg,
-            var(--card-bg) 0%,
-            var(--card-bg-hover) 100%
-        );
-    border: 1px solid var(--border-color-light);
-    box-shadow:
-        var(--shadow-xl),
-        0 0 20px var(--magenta-glow-faint),
-        inset 0 1px 1px rgba(255, 255, 255, 0.05);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    transform-origin: top right;
-    animation: dropdownFadeIn 0.3s var(--transition-bounce);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-
-@keyframes dropdownFadeIn {
-    0% {
-        opacity: 0;
-        transform: translateY(-15px) scale(0.95);
-        box-shadow: var(--shadow-xl), 0 0 0 var(--magenta-glow-faint);
-    }
-    70% {
-        transform: translateY(2px) scale(1.01);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        box-shadow: var(--shadow-xl), 0 0 20px var(--magenta-glow-faint);
-    }
-}
-
-#user-menu:after {
-    content: '';
-    position: absolute;
-    top: -5px;
-    right: 10px;
-    width: 10px;
-    height: 10px;
-    background: var(--card-bg-hover);
-    border-left: 1px solid var(--border-color-light);
-    border-top: 1px solid var(--border-color-light);
-    transform: rotate(45deg);
-    box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.1);
-}
-
-#user-menu a {
-    color: var(--text-color) !important;
-    transition: all var(--transition-bounce);
-    border-left: 3px solid transparent;
-    padding: 0.75rem 1rem;
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    margin: 2px 0;
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-#user-menu a:before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 0;
-    background: linear-gradient(90deg, var(--magenta-glow-faint), transparent);
-    z-index: -1;
-    transition: width var(--transition-smooth) 0.05s;
-}
-
-#user-menu a:after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background-color: var(--magenta-primary);
-    opacity: 0;
-    transform: translateY(-50%) scale(0);
-    transition: transform var(--transition-bounce), opacity var(--transition-bounce);
-}
-
-#user-menu a:hover {
-    background-color: rgba(232, 62, 140, 0.05) !important;
-    border-left: 3px solid var(--magenta-primary);
-    padding-left: calc(1rem - 3px);
-    color: var(--magenta-lighter) !important;
-    transform: translateX(5px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-#user-menu a:hover:before {
-    width: 100%;
-    animation: menuItemPulse 2s infinite alternate ease-in-out;
-}
-
-#user-menu a:hover:after {
-    opacity: 1;
-    transform: translateY(-50%) scale(1);
-}
-
-@keyframes menuItemPulse {
-    0% { opacity: 0.4; }
-    100% { opacity: 0.8; }
-}
-
-/* Mobile menu - Enhanced appearance and animations */
-#mobile-menu {
-    background-color: var(--darker-bg);
-    background-image: linear-gradient(
-        160deg,
-        var(--darkest-bg) 0%,
-        var(--darker-bg) 60%,
-        var(--surface-1) 100%
-    );
-    border-top: 1px solid var(--border-color);
-    box-shadow:
-        inset 0 5px 15px -5px rgba(0, 0, 0, 0.3),
-        0 10px 15px -5px rgba(0, 0, 0, 0.2);
-    animation: slideDown 0.4s var(--transition-bounce);
-    max-height: calc(100vh - 4rem);
-    overflow-y: auto;
-    border-radius: 0 0 var(--radius-md) var(--radius-md);
-    backdrop-filter: blur(7px);
-    -webkit-backdrop-filter: blur(7px);
-}
-
-@keyframes slideDown {
-    0% {
-        opacity: 0;
-        transform: translateY(-15px);
-        box-shadow: inset 0 5px 15px -5px rgba(0, 0, 0, 0.2);
-    }
-    70% {
-        transform: translateY(3px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-        box-shadow: inset 0 5px 15px -5px rgba(0, 0, 0, 0.3);
-    }
-}
-
-#mobile-menu a {
-    transition: all var(--transition-bounce);
-    border-left: 4px solid transparent;
-    margin: 3px 0;
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    position: relative;
-    overflow: hidden;
-}
-
-#mobile-menu a:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, var(--magenta-glow-faint), transparent);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-    z-index: -1;
-}
-
-#mobile-menu a:hover {
-    background-color: var(--highlight-hover) !important;
-    border-left: 4px solid var(--magenta-primary);
-    transform: translateX(5px);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.15),
-        0 0 3px var(--magenta-glow-faint);
-    padding-left: calc(1.5rem - 4px);
-}
-
-#mobile-menu a:hover:before {
-    opacity: 0.4;
-}
-
-#mobile-menu a.bg-highlight {
-    background-color: var(--highlight-active) !important;
-    border-left: 4px solid var(--magenta-light);
-    box-shadow:
-        inset 0 0 15px rgba(0, 0, 0, 0.3),
-        0 0 5px var(--magenta-glow-faint);
-    position: relative;
-}
-
-#mobile-menu a.bg-highlight:after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 1px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        var(--magenta-glow-faint) 20%,
-        var(--magenta-glow-subtle) 50%,
-        var(--magenta-glow-faint) 80%,
-        transparent 100%);
-    opacity: 0.6;
-}
-
-#mobile-menu .border-t {
-    border-color: var(--border-color-light) !important;
-    box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.2);
-    position: relative;
-}
-
-#mobile-menu .border-t:before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        var(--magenta-glow-faint) 30%,
-        var(--magenta-glow-faint) 70%,
-        transparent 100%);
-    opacity: 0.3;
-}
-
-/* Mobile menu button animation */
-#mobile-menu-button {
-    position: relative;
-    overflow: hidden;
-    border-radius: var(--radius-sm);
-    transition: background-color var(--transition-normal);
-}
-
-#mobile-menu-button:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at center, var(--magenta-glow-faint) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-    z-index: -1;
-}
-
-#mobile-menu-button:hover:before {
-    opacity: 0.4;
-}
-
-#mobile-menu-button svg {
-    transition: all var(--transition-bounce);
-}
-
-#mobile-menu-button:hover {
-    background-color: var(--highlight-hover) !important;
-}
-
-#mobile-menu-button:hover svg {
-    transform: scale(1.15) rotate(5deg);
-    filter: drop-shadow(0 0 3px var(--magenta-glow-faint));
-}
-
-#mobile-menu-button:active svg {
-    transform: scale(0.9) rotate(-5deg);
-}
-
-/* Login/Register buttons */
-/* Login/Register buttons and navigation links */
-a.text-white.hover\:bg-blue-700,
-a.text-white.hover\:bg-blue-600,
-a.text-white.hover\:bg-blue-500 {
-    color: var(--text-color) !important;
-}
-
-a.text-white.hover\:bg-blue-700:hover,
-a.text-white.hover\:bg-blue-600:hover,
-a.text-white.hover\:bg-blue-500:hover {
-    background-color: var(--highlight) !important;
-}
-
-a.bg-white.text-blue-600,
-a.bg-white.text-blue-500,
-a.bg-white.text-blue-700 {
-    background-color: var(--magenta-primary) !important;
-    color: var(--text-color) !important;
-}
-
-a.bg-white.text-blue-600:hover,
-a.bg-white.text-blue-500:hover,
-a.bg-white.text-blue-700:hover {
-    background-color: var(--magenta-secondary) !important;
-}
-
-/* Navigation highlight for mobile */
-.bg-highlight {
-    background-color: var(--highlight) !important;
-}
-
-/* Footer styling */
-footer {
-    background-color: var(--darker-bg) !important;
-    border-top: 1px solid var(--border-color);
-}
-
-footer .text-gray-500,
-footer .text-sm {
-    color: var(--text-secondary) !important;
-}
-
-footer .text-sm a {
-    color: var(--magenta-primary) !important;
-}
-
-/* Flash messages */
-.flash-messages {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1000;
-}
-
-.flash-message {
-    margin-bottom: 0.75rem;
-    padding: 0.875rem 1.25rem;
-    border-radius: 0.375rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    background-color: var(--card-bg);
-    background-image: var(--gradient-card);
-    color: var(--text-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transform: translateX(0);
-    transition: all var(--transition-normal);
-    overflow: hidden;
-    max-width: 400px;
-    position: relative;
-}
-
-.flash-message:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 4px;
-}
-
-.flash-message:hover {
-    transform: translateX(-3px);
-    box-shadow: var(--shadow-lg);
-}
-
-.flash-success {
-    border-left: 4px solid var(--success);
-}
-
-.flash-success:before {
-    background-color: var(--success);
-}
-
-.flash-danger {
-    border-left: 4px solid var(--danger);
-}
-
-.flash-danger:before {
-    background-color: var(--danger);
-}
-
-.flash-warning {
-    border-left: 4px solid var(--warning);
-}
-
-.flash-warning:before {
-    background-color: var(--warning);
-}
-
-.flash-info {
-    border-left: 4px solid var(--magenta-primary);
-}
-
-.flash-info:before {
-    background-color: var(--magenta-primary);
-}
-
-/* Button close for flash messages */
-.close-flash {
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity var(--transition-fast);
-    padding: 0.25rem;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.1);
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.close-flash:hover {
-    opacity: 1;
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Links */
-a {
-    color: var(--magenta-primary);
-    transition: all var(--transition-normal);
-    text-decoration: none;
-    position: relative;
-}
-
-a:hover {
-    color: var(--magenta-light);
-    text-decoration: none;
-}
-
-a:not(nav a):not(.btn):hover:after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 1px;
-    background: var(--gradient-magenta);
-    bottom: -2px;
-    left: 0;
-    transform: scaleX(1);
-    transform-origin: left;
-    transition: transform var(--transition-normal);
-}
-
-/* Cards styling */
-.bg-white, .bg-white.rounded-2xl, div.p-6.bg-white {
-    background-color: var(--card-bg) !important;
-    background-image: var(--gradient-card);
-    color: var(--text-color) !important;
-    border: 1px solid var(--border-color);
-    transition: all var(--transition-normal);
-}
-
-.bg-white:hover, .bg-white.rounded-2xl:hover, div.p-6.bg-white:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--border-color-light);
-}
-
-/* Ensure headings use the correct color */
-h1, h2, h3, h4, h5, h6 {
-    color: var(--text-color) !important;
-    letter-spacing: var(--letter-spacing-tight);
-    line-height: var(--line-height-compact);
-    font-weight: var(--font-weight-semibold);
-}
-
-h1 {
-    font-weight: var(--font-weight-bold);
-    letter-spacing: var(--letter-spacing-wide);
-}
-
-/* Ensure paragraphs are readable */
-p {
-    color: var(--text-color) !important;
-    line-height: var(--line-height-relaxed);
-    margin-bottom: 1rem;
-}
-
-p.lead, .text-lg {
-    font-weight: var(--font-weight-light);
-    letter-spacing: var(--letter-spacing-normal);
-}
-
-p.small, .text-sm {
-    color: var(--text-secondary) !important;
-    line-height: var(--line-height-normal);
-}
-
-/* Welcome page card styling */
-.grid-cols-1 .p-6 {
-    background-color: var(--card-bg) !important;
-    border: 1px solid var(--border-color);
-}
-
-/* Ensure proper card shadows */
-.shadow {
-    box-shadow: var(--shadow-sm) !important;
-    transition: box-shadow var(--transition-normal);
-}
-
-.shadow-md {
-    box-shadow: var(--shadow-md) !important;
-    transition: box-shadow var(--transition-normal);
-}
-
-.shadow-lg {
-    box-shadow: var(--shadow-lg) !important;
-    transition: box-shadow var(--transition-normal);
-}
-
-.hover\:shadow-md:hover {
-    box-shadow: var(--shadow-xl) !important;
-    transform: translateY(-2px);
-    transition: all var(--transition-normal);
-}
-
-/* Auth pages styling */
-.bg-gray-100 {
-    background-color: var(--dark-bg) !important;
-}
-
-.text-gray-900 {
-    color: var(--text-color) !important;
-}
-
-.text-gray-600, .text-gray-500, .text-gray-400 {
-    color: var(--text-secondary) !important;
-}
-
-/* Error messages */
-.text-red-500 {
-    color: #EF4444 !important;
-}
-
-/* Auth form card styling */
-.min-h-screen.flex.items-center.justify-center .max-w-md {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-md);
-    padding: 2rem;
-}
-
-/* Forms and inputs - Enhanced with depth and polish */
-
-/* Form containers and general form styling */
-.form-group, form > div {
-    margin-bottom: 1.75rem;
-    position: relative;
-}
-
-/* Form section styling */
-.form-section {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    background-color: rgba(30, 30, 30, 0.3);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-    margin-bottom: 2rem;
-}
-
-.form-section-title {
-    font-size: 1.1rem;
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color-light);
-    color: var(--magenta-light);
-}
-
-/* Labels styling - Enhanced typography and spacing */
-label {
-    display: block;
-    margin-bottom: 0.625rem;
-    color: var(--text-color-muted);
-    font-weight: var(--font-weight-medium);
-    font-size: var(--font-size-sm);
-    letter-spacing: var(--letter-spacing-wide);
-    transition: all var(--transition-normal);
-    position: relative;
-    padding-left: 0.125rem;
-}
-
-label:focus-within {
-    color: var(--magenta-light);
-    transform: translateX(2px);
-}
-
-/* Animated label underline on focus */
-label:focus-within::after {
-    content: '';
-    position: absolute;
-    width: 2rem;
-    height: 2px;
-    background: var(--gradient-magenta);
-    left: 0;
-    bottom: -0.25rem;
-    transform: scaleX(1);
-    transform-origin: left;
-    transition: transform var(--transition-normal);
-    opacity: 0.8;
-}
-
-/* Label required indicator with pulse animation */
-label.required::after {
-    content: '*';
-    color: var(--magenta-light);
-    margin-left: 0.25rem;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; }
-    100% { opacity: 0.6; }
-}
-
-/* Text inputs, textareas and selects - Enhanced with depth effects */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-input[type="tel"],
-input[type="url"],
-input[type="date"],
-input[type="datetime-local"],
-textarea,
-select {
-    width: 100%;
-    background-color: var(--surface-1) !important;
-    background-image: linear-gradient(to bottom, rgba(18, 18, 18, 0.7), var(--surface-1)) !important;
-    border: 1px solid var(--border-color) !important;
-    color: var(--text-color) !important;
-    padding: 0.875rem 1.125rem !important;
-    border-radius: var(--radius-md);
-    font-size: 0.95rem;
-    letter-spacing: var(--letter-spacing-normal);
-    transition: all var(--transition-bounce);
-    box-shadow: var(--shadow-inset),
-                0 2px 4px rgba(0, 0, 0, 0.15),
-                inset 0 1px 3px rgba(0, 0, 0, 0.2);
-    outline: none;
-    position: relative;
-}
-
-/* Input field hover state with subtle highlight */
-input:hover:not(:disabled),
-textarea:hover:not(:disabled),
-select:hover:not(:disabled) {
-    border-color: var(--border-color-lighter) !important;
-    box-shadow: var(--shadow-inset),
-                0 3px 6px rgba(0, 0, 0, 0.2),
-                inset 0 1px 3px rgba(0, 0, 0, 0.1),
-                0 0 0 1px var(--magenta-glow-faint);
-    background-image: linear-gradient(to bottom, rgba(20, 20, 20, 0.7), var(--surface-1)) !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-    color: var(--text-tertiary);
-    opacity: 0.7;
-    transition: opacity var(--transition-normal);
-}
-
-input:focus::placeholder,
-textarea:focus::placeholder {
-    opacity: 0.4;
-    transform: translateX(3px);
-}
-
-/* Enhanced focus states for inputs */
-input:focus,
-textarea:focus,
-select:focus {
-    border-color: var(--magenta-primary) !important;
-    box-shadow: var(--shadow-inset),
-                0 0 0 3px var(--magenta-glow-subtle),
-                0 4px 8px rgba(0, 0, 0, 0.2);
-    background-image: linear-gradient(to bottom, rgba(22, 22, 22, 0.7), var(--surface-2)) !important;
-    transform: translateY(-1px);
-}
-
-/* Disabled state with subtle indication */
-input:disabled,
-textarea:disabled,
-select:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background-color: var(--surface-2) !important;
-    border-color: var(--border-color-light) !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    position: relative;
-}
-
-input:disabled::after,
-textarea:disabled::after,
-select:disabled::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: repeating-linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.05),
-        rgba(255, 255, 255, 0.05) 5px,
-        transparent 5px,
-        transparent 10px
-    );
-    pointer-events: none;
-    border-radius: inherit;
-}
-
-/* Textarea specific styling with resizing handle */
-textarea {
-    min-height: 120px;
-    resize: vertical;
-    line-height: 1.5;
-    background-image: linear-gradient(to bottom, rgba(18, 18, 18, 0.8), var(--surface-1) 50%) !important;
-}
-
-textarea:focus {
-    background-image: linear-gradient(to bottom, rgba(22, 22, 22, 0.8), var(--surface-2) 50%) !important;
-}
-
-/* Resizing handle with custom styling */
-textarea::-webkit-resizer {
-    border-width: 8px;
-    border-style: solid;
-    border-color: transparent var(--magenta-glow-faint) var(--magenta-glow-faint) transparent;
-    background-color: transparent;
-}
-
-/* Enhanced select styling with animated dropdown icon */
-select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e83e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-    background-size: 16px 16px !important;
-    padding-right: 2.5rem !important;
-    cursor: pointer;
-}
-
-select:hover {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ff4fa3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-}
-
-select:focus {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ff4fa3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-    background-size: 16px 16px !important;
-}
-
-/* Improved form validation states with better visual cues */
-input.is-valid,
-textarea.is-valid,
-select.is-valid {
-    border-color: var(--success) !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2328a745' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E"), linear-gradient(to bottom, rgba(18, 18, 18, 0.7), var(--surface-1)) !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center, center !important;
-    background-size: 16px 16px, 100% !important;
-    padding-right: 2.5rem !important;
-    box-shadow: var(--shadow-inset), 0 0 0 1px rgba(40, 167, 69, 0.2);
-}
-
-input.is-invalid,
-textarea.is-invalid,
-select.is-invalid {
-    border-color: var(--danger) !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23dc3545' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E"), linear-gradient(to bottom, rgba(18, 18, 18, 0.7), var(--surface-1)) !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center, center !important;
-    background-size: 16px 16px, 100% !important;
-    padding-right: 2.5rem !important;
-    box-shadow: var(--shadow-inset), 0 0 0 1px rgba(220, 53, 69, 0.2);
-}
-
-/* Enhanced validation feedback messages */
-.validation-feedback {
-    margin-top: 0.375rem;
-    font-size: var(--font-size-xs);
-    line-height: 1.4;
-    display: flex;
-    align-items: center;
-    opacity: 0;
-    height: 0;
-    overflow: hidden;
-    transition: all var(--transition-normal);
-}
-
-.invalid-feedback {
-    color: var(--danger-light);
-    display: none;
-}
-
-.valid-feedback {
-    color: var(--success-light);
-    display: none;
-}
-
-.validation-feedback:before {
-    content: '';
-    display: inline-block;
-    width: 0.75rem;
-    height: 0.75rem;
-    margin-right: 0.375rem;
-    background-size: contain;
-    background-repeat: no-repeat;
-}
-
-.invalid-feedback:before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23dc3545' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E");
-}
-
-.valid-feedback:before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2328a745' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'%3E%3C/path%3E%3Cpolyline points='22 4 12 14.01 9 11.01'%3E%3C/polyline%3E%3C/svg%3E");
-}
-
-input.is-invalid ~ .invalid-feedback,
-textarea.is-invalid ~ .invalid-feedback,
-select.is-invalid ~ .invalid-feedback,
-input.is-valid ~ .valid-feedback,
-textarea.is-valid ~ .valid-feedback,
-select.is-valid ~ .valid-feedback {
-    display: flex;
-    opacity: 1;
-    height: auto;
-    animation: slideDown var(--transition-normal);
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-        height: 0;
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-        height: auto;
-    }
-}
-
-/* Enhanced checkboxes and radio buttons */
-input[type="checkbox"],
-input[type="radio"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 1px solid var(--border-color);
-    background-color: var(--surface-1);
-    position: relative;
-    cursor: pointer;
-    margin-right: 0.625rem;
-    vertical-align: middle;
-    transition: all var(--transition-bounce);
-    box-shadow: var(--shadow-inset), 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-input[type="checkbox"] {
-    border-radius: var(--radius-sm);
-}
-
-input[type="radio"] {
-    border-radius: 50%;
-}
-
-input[type="checkbox"]:hover,
-input[type="radio"]:hover {
-    border-color: var(--magenta-glow-faint);
-    box-shadow: var(--shadow-inset), 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--magenta-glow-faint);
-}
-
-input[type="checkbox"]:checked,
-input[type="radio"]:checked {
-    border-color: var(--magenta-primary);
-    background-color: var(--magenta-primary);
-    background-image: var(--gradient-magenta-dark);
-    box-shadow: 0 0 0 1px var(--magenta-glow-faint), 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-input[type="checkbox"]:checked::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -60%) rotate(45deg);
-    width: 0.3rem;
-    height: 0.6rem;
-    border-bottom: 2px solid white;
-    border-right: 2px solid white;
-    box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
-    animation: checkmarkAppear 0.2s ease-out;
-}
-
-@keyframes checkmarkAppear {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -60%) rotate(45deg) scale(0.5);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -60%) rotate(45deg) scale(1);
-    }
-}
-
-input[type="radio"]:checked::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background-color: white;
-}
-
-input[type="checkbox"]:focus,
-input[type="radio"]:focus {
-    border-color: var(--magenta-primary);
-    box-shadow: 0 0 0 2px var(--magenta-glow-subtle);
-}
-
-input[type="checkbox"]:disabled,
-input[type="radio"]:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.checkbox-label,
-.radio-label {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    margin-right: 1rem;
-    margin-bottom: 0.5rem;
-    transition: color var(--transition-fast);
-}
-
-.checkbox-label:hover,
-.radio-label:hover {
-    color: var(--text-color);
-}
-
-/* Switch toggle */
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 3rem;
-    height: 1.5rem;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--surface-3);
-    transition: var(--transition-normal);
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-inset);
-}
-
-.slider:before {
-    position: absolute;
-    content: '';
-    height: 1rem;
-    width: 1rem;
-    left: 0.25rem;
-    bottom: 0.25rem;
-    background-color: var(--text-color);
-    transition: var(--transition-normal);
-    border-radius: 50%;
-    box-shadow: var(--shadow-sm);
-}
-
-input:checked + .slider {
-    background-color: var(--magenta-primary);
-    box-shadow: 0 0 0 1px var(--magenta-glow-faint);
-}
-
-input:focus + .slider {
-    box-shadow: 0 0 0 2px var(--magenta-glow-subtle);
-}
-
-input:checked + .slider:before {
-    transform: translateX(1.5rem);
-    background-color: white;
-}
-
-/* Button styling - Enhanced with animations */
-button,
-.btn,
-input[type="button"],
-input[type="submit"],
-input[type="reset"] {
-    display: inline-block;
-    padding: 0.7rem 1.5rem;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    text-align: center;
-    text-decoration: none;
-    white-space: nowrap;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-bounce);
-    border: 1px solid transparent;
-    position: relative;
-    overflow: hidden;
-    z-index: 1;
-    user-select: none;
-    -webkit-user-select: none;
-    letter-spacing: var(--letter-spacing-wide);
-    line-height: var(--line-height-normal);
-    box-shadow: var(--shadow-sm);
-}
-
-/* Button gradient effect on hover */
-button::before,
-.btn::before,
-input[type="button"]::before,
-input[type="submit"]::before,
-input[type="reset"]::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: var(--gradient-button);
-    z-index: -1;
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-}
-
-/* Button after effect for glow */
-button::after,
-.btn::after,
-input[type="button"]::after,
-input[type="submit"]::after,
-input[type="reset"]::after {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: var(--gradient-magenta);
-    z-index: -2;
-    opacity: 0;
-    border-radius: var(--radius-md);
-    transition: opacity var(--transition-fast);
-}
-
-button:hover::before,
-.btn:hover::before,
-input[type="button"]:hover::before,
-input[type="submit"]:hover::before,
-input[type="reset"]:hover::before {
-    opacity: 1;
-}
-
-button:hover::after,
-.btn:hover::after,
-input[type="button"]:hover::after,
-input[type="submit"]:hover::after,
-input[type="reset"]:hover::after {
-    opacity: 0.2;
-    animation: pulse-border 1.5s infinite;
-}
-
-@keyframes pulse-border {
-    0% { opacity: 0.1; }
-    50% { opacity: 0.2; }
-    100% { opacity: 0.1; }
-}
-
-button:focus,
-.btn:focus,
-input[type="button"]:focus,
-input[type="submit"]:focus,
-input[type="reset"]:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--magenta-glow-subtle);
-}
-
-button:active,
-.btn:active,
-input[type="button"]:active,
-input[type="submit"]:active,
-input[type="reset"]:active {
-    transform: translateY(1px) scale(0.98);
-}
-
-button:disabled,
-.btn:disabled,
-input[type="button"]:disabled,
-input[type="submit"]:disabled,
-input[type="reset"]:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    pointer-events: none;
-    position: relative;
-}
-
-button:disabled::before,
-.btn:disabled::before,
-input[type="button"]:disabled::before,
-input[type="submit"]:disabled::before,
-input[type="reset"]:disabled::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: repeating-linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.05),
-        rgba(255, 255, 255, 0.05) 10px,
-        transparent 10px,
-        transparent 20px
-    );
-    border-radius: inherit;
-}
-
-/* Primary button with enhanced hover effects */
-.btn-primary,
-input[type="submit"] {
-    background-color: var(--magenta-primary);
-    background-image: var(--gradient-magenta);
-    color: white;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.2);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.btn-primary:hover,
-input[type="submit"]:hover {
-    background-image: var(--gradient-magenta-dark);
-    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2),
-                0 3px 6px rgba(0, 0, 0, 0.15),
-                0 0 0 1px var(--magenta-glow-faint);
-    transform: translateY(-2px) scale(1.02);
-}
-
-/* Button hover shine effect */
-.btn-primary:hover::before,
-input[type="submit"]:hover::before {
-    background: linear-gradient(
-        to right,
-        transparent 0%,
-        rgba(255, 255, 255, 0.2) 50%,
-        transparent 100%
-    );
-    animation: shine 1.5s infinite;
-}
-
-@keyframes shine {
-    0% { transform: translateX(-100%); }
-    60% { transform: translateX(100%); }
-    100% { transform: translateX(100%); }
-}
-
-.btn-primary:active,
-input[type="submit"]:active {
-    background-image: none;
-    background-color: var(--magenta-dark);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), inset 0 1px 3px rgba(0, 0, 0, 0.2);
-    transform: translateY(1px) scale(0.98);
-}
-
-/* Secondary button with consistent styling */
-.btn-secondary,
-input[type="reset"] {
-    background-color: var(--surface-2);
-    color: var(--text-color);
-    border: 1px solid var(--border-color-light);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.btn-secondary:hover,
-input[type="reset"]:hover {
-    background-color: var(--surface-3);
-    color: var(--magenta-light);
-    border-color: var(--border-color-lighter);
-    transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px var(--magenta-glow-faint);
-}
-
-.btn-secondary:active,
-input[type="reset"]:active {
-    background-color: var(--surface-1);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-    transform: translateY(1px) scale(0.98);
-}
-
-/* Button group styling */
-.btn-group {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.btn-group.btn-group-vertical {
-    flex-direction: column;
-}
-
-/* Small buttons */
-.btn-sm {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.8rem;
-}
-
-/* Large buttons */
-.btn-lg {
-    padding: 0.8rem 1.8rem;
-    font-size: 1.1rem;
-}
-
-/* Enhanced file input */
-input[type="file"] {
-    position: relative;
-    width: 100%;
-    height: auto;
-    min-height: 2.75rem;
-    padding: 0.625rem;
-    cursor: pointer;
-    background-color: var(--surface-1);
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-md);
-    transition: all var(--transition-normal);
-    display: flex;
-    align-items: center;
-}
-
-input[type="file"]:hover {
-    border-color: var(--border-color-lighter);
-    background-color: var(--surface-2);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-input[type="file"]::file-selector-button {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-sm);
-    background-color: var(--surface-2);
-    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
-    color: var(--text-color);
-    border: 1px solid var(--border-color-light);
-    cursor: pointer;
-    transition: all var(--transition-bounce);
-    margin-right: 1rem;
-    position: relative;
-    overflow: hidden;
-}
-
-input[type="file"]:hover::file-selector-button {
-    background-color: var(--magenta-primary);
-    background-image: var(--gradient-magenta);
-    border-color: var(--magenta-primary);
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-input[type="file"]:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--magenta-glow-subtle);
-    border-color: var(--magenta-primary);
-}
-
-/* File input - Filename display styling */
-.file-input-wrapper {
-    position: relative;
-}
-
-.file-name-display {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-color-muted);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.file-name-display i {
-    color: var(--magenta-primary);
-}
-
-/* Drag and drop zone styling */
-.drop-zone {
-    border: 2px dashed var(--border-color-light);
-    border-radius: var(--radius-lg);
-    padding: 2rem;
-    text-align: center;
-    transition: all var(--transition-normal);
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-.drop-zone:hover,
-.drop-zone.drag-over {
-    border-color: var(--magenta-primary);
-    background-color: rgba(232, 62, 140, 0.05);
-    box-shadow: 0 0 0 1px var(--magenta-glow-faint), 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.drop-zone .icon {
-    font-size: 2.5rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    transition: all var(--transition-bounce);
-}
-
-.drop-zone:hover .icon,
-.drop-zone.drag-over .icon {
-    transform: translateY(-5px) scale(1.1);
-    color: var(--magenta-primary);
-}
-
-/* Enhanced range slider */
-input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 0.5rem;
-    background: linear-gradient(to right, var(--surface-1), var(--surface-3));
-    border-radius: var(--radius-full);
-    outline: none;
-    margin: 0.75rem 0;
-    cursor: pointer;
-    position: relative;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-input[type="range"]::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: var(--range-progress, 0%);
-    background: linear-gradient(to right, var(--magenta-dark), var(--magenta-primary));
-    border-radius: var(--radius-full);
-    z-index: 1;
-    transition: width 0.1s ease-in-out;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 0.5rem;
-    border-radius: var(--radius-full);
-}
-
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 1.3rem;
-    height: 1.3rem;
-    border-radius: 50%;
-    background-color: var(--magenta-primary);
-    background-image: var(--gradient-magenta);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(232, 62, 140, 0.2);
-    cursor: pointer;
-    transition: all var(--transition-bounce);
-    margin-top: -0.4rem;
-    z-index: 2;
-    position: relative;
-}
-
-input[type="range"]::-moz-range-track {
-    width: 100%;
-    height: 0.5rem;
-    border-radius: var(--radius-full);
-}
-
-input[type="range"]::-moz-range-progress {
-    height: 0.5rem;
-    background: linear-gradient(to right, var(--magenta-dark), var(--magenta-primary));
-    border-radius: var(--radius-full);
-}
-
-input[type="range"]::-moz-range-thumb {
-    width: 1.3rem;
-    height: 1.3rem;
-    border-radius: 50%;
-    background-color: var(--magenta-primary);
-    background-image: var(--gradient-magenta);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(232, 62, 140, 0.2);
-    cursor: pointer;
-    transition: all var(--transition-bounce);
-    border: none;
-    z-index: 2;
-}
-
-input[type="range"]::-webkit-slider-thumb:hover {
-    background-color: var(--magenta-light);
-    transform: scale(1.15);
-    box-shadow: 0 0 10px var(--magenta-glow-subtle), 0 0 0 2px rgba(255, 105, 180, 0.3);
-}
-
-input[type="range"]::-moz-range-thumb:hover {
-    background-color: var(--magenta-light);
-    transform: scale(1.15);
-    box-shadow: 0 0 10px var(--magenta-glow-subtle), 0 0 0 2px rgba(255, 105, 180, 0.3);
-}
-
-input[type="range"]:focus {
-    box-shadow: 0 0 0 2px var(--magenta-glow-subtle);
-}
-
-/* Range value display */
-.range-value {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    margin-top: -0.5rem;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-}
-
-/* Form grid layout for responsive forms */
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 1rem;
-}
-
-.form-grid .col-12 { grid-column: span 12; }
-.form-grid .col-6 { grid-column: span 6; }
-.form-grid .col-4 { grid-column: span 4; }
-.form-grid .col-3 { grid-column: span 3; }
-
-@media (max-width: 768px) {
-    .form-grid .col-6,
-    .form-grid .col-4,
-    .form-grid .col-3 {
-        grid-column: span 12;
-    }
-}
-
-/* Form field spacing and alignment helpers */
-.form-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-@media (max-width: 640px) {
-    .form-row {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-}
-
-.form-spacer {
-    height: 1.5rem;
-}
-
-.form-divider {
-    width: 100%;
-    height: 1px;
-    background: var(--border-color);
-    margin: 1.5rem 0;
-    position: relative;
-}
-
-.form-divider::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        var(--magenta-glow-faint) 50%,
-        transparent 100%);
-    opacity: 0.5;
-}
-
-/* Field set and legend */
-fieldset {
-    border: 1px solid var(--border-color-light);
-    border-radius: var(--radius-md);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-legend {
-    padding: 0 0.5rem;
-    font-weight: var(--font-weight-medium);
-    color: var(--magenta-light);
-}
-
-/* Responsive form adjustments */
-@media (max-width: 768px) {
-    .form-group, form > div {
-        margin-bottom: 1.25rem;
-    }
-    
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="search"],
-    input[type="tel"],
-    input[type="url"],
-    input[type="date"],
-    input[type="datetime-local"],
-    textarea,
-    select {
-        padding: 0.625rem 0.875rem !important;
-        font-size: 0.9rem;
-    }
-    
-    button,
-    .btn,
-    input[type="button"],
-    input[type="submit"],
-    input[type="reset"] {
-        width: 100%;
-        margin-bottom: 0.5rem;
-        padding: 0.5rem 1rem;
-    }
-    
-    fieldset {
-        padding: 1rem;
-    }
-    
-    .checkbox-label,
-    .radio-label {
-        display: flex;
-        margin-right: 0;
-    }
-}
-
-/* Form grid for responsive layouts */
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-}
-
-/* Helper classes for form layouts */
-.form-inline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.form-inline label {
-    margin-right: 0.5rem;
-    margin-bottom: 0;
-}
-
-.form-row {
-    display: flex;
-    flex-wrap: wrap;
-    margin-right: -0.75rem;
-    margin-left: -0.75rem;
-}
-
-.form-col {
-    flex: 1 0 0%;
-    padding-right: 0.75rem;
-    padding-left: 0.75rem;
-}
-
-/* Enhance form elements with glass effect */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-input[type="tel"],
-input[type="url"],
-input[type="date"],
-input[type="datetime-local"],
-textarea,
-select {
-    box-shadow:
-        var(--shadow-inset),
-        inset 0 2px 3px rgba(0, 0, 0, 0.25),
-        0 1px 0 rgba(255, 255, 255, 0.05),
-        0 1px 3px rgba(0, 0, 0, 0.4);
-    position: relative;
-    width: 100%;
-    transform: translateZ(0); /* Hardware acceleration for smoother animations */
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1rem;
-    font-size: var(--font-size-base);
-}
-
-/* Pseudo element for enhanced depth effect */
-input:before,
-select:before,
-textarea:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: inherit;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-    pointer-events: none;
-}
-
-input:hover, select:hover, textarea:hover {
-    border-color: var(--border-color-light) !important;
-    background-color: var(--surface-1) !important;
-    box-shadow:
-        var(--shadow-inset-deep),
-        0 1px 0 rgba(255, 255, 255, 0.08),
-        0 0 6px var(--magenta-glow-faint);
-    transform: translateY(-1px) scale(1.005);
-    border-bottom: 1px solid rgba(232, 62, 140, 0.3);
-}
-
-input:hover:before, select:hover:before, textarea:hover:before {
-    opacity: 1;
-}
-
-input:focus, select:focus, textarea:focus {
-    border-color: var(--magenta-primary) !important;
-    box-shadow:
-        0 0 0 2px var(--magenta-glow),
-        0 0 10px var(--magenta-glow-faint),
-        var(--shadow-inset) !important;
-    background-color: var(--surface-1) !important;
-    outline: none;
-    transform: translateY(-2px) scale(1.01);
-    transition: all var(--transition-bounce);
-    background-image: linear-gradient(to bottom, rgba(18, 18, 18, 0.7), var(--surface-1)) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-    border-bottom: 1px solid var(--magenta-primary);
-}
-
-input:focus:before, select:focus:before, textarea:focus:before {
-    opacity: 0;
-}
-
-input:disabled, select:disabled, textarea:disabled {
-    background-color: var(--darker-bg) !important;
-    border-color: var(--border-color) !important;
-    color: var(--text-disabled) !important;
-    cursor: not-allowed;
-    opacity: 0.75;
-    box-shadow: none;
-    transform: none;
-}
-
-/* Form groups with improved spacing and organization */
-.form-group {
-    margin-bottom: 1.5rem;
-    position: relative;
-}
-
-/* Enhanced Form labels styling */
-label {
-    display: block;
-    margin-bottom: 0.75rem;
-    font-weight: var(--font-weight-medium);
-    color: var(--text-color) !important;
-    letter-spacing: var(--letter-spacing-wide);
-    font-size: 0.95rem;
-    transition: all var(--transition-bounce);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    position: relative;
-    padding-left: 0.85rem;
-    background: linear-gradient(90deg,
-        rgba(232, 62, 140, 0.07) 0%,
-        transparent 60%);
-    border-radius: var(--radius-sm);
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    position: relative;
-    overflow: hidden;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-label:before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 1.25em;
-    background: var(--magenta-primary);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    opacity: 0.7;
-    transition: all var(--transition-bounce);
-    box-shadow:
-        0 0 5px var(--magenta-glow-faint),
-        inset 0 0 3px rgba(255, 255, 255, 0.3);
-}
-
-label:hover {
-    color: var(--magenta-lighter) !important;
-    transform: translateX(2px);
-    background: linear-gradient(90deg,
-        rgba(232, 62, 140, 0.1) 0%,
-        transparent 70%);
-}
-
-label:hover:before {
-    background: var(--magenta-light);
-    background-image: linear-gradient(to bottom, var(--magenta-light), var(--magenta-primary));
-    box-shadow:
-        0 0 8px var(--magenta-glow),
-        inset 0 0 3px rgba(255, 255, 255, 0.5);
-    height: 1.4em;
-    opacity: 1;
-    width: 4px;
-}
-
-/* Add subtle effect to labels */
-label:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to right,
-        rgba(255, 255, 255, 0.05) 0%,
-        transparent 10%,
-        transparent 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-label:hover:after {
-    opacity: 1;
-}
-
-/* Subtle label animation when input is focused */
-input:focus + label,
-select:focus + label,
-textarea:focus + label {
-    color: var(--magenta-light) !important;
-    transform: translateX(4px);
-    background: linear-gradient(90deg,
-        rgba(232, 62, 140, 0.1) 0%,
-        transparent 70%);
-}
-
-input:focus + label:before,
-select:focus + label:before,
-textarea:focus + label:before {
-    height: 1.4em;
-    width: 4px;
-    background: var(--gradient-magenta);
-    box-shadow: 0 0 10px var(--magenta-glow);
-}
-
-/* Required field indicator */
-label.required:after {
-    content: '*';
-    color: var(--magenta-light);
-    margin-left: 0.3rem;
-    font-size: 1.2em;
-    font-weight: var(--font-weight-bold);
-    text-shadow: 0 0 5px var(--magenta-glow);
-    animation: pulseGlow 2s infinite alternate ease-in-out;
-    display: inline-block;
-    transform: translateY(1px);
-    position: relative;
-}
-
-@keyframes pulseGlow {
-    0% { text-shadow: 0 0 5px var(--magenta-glow-faint); opacity: 0.7; }
-    100% { text-shadow: 0 0 10px var(--magenta-glow); opacity: 1; }
-}
-
-/* Placeholder text enhancements */
-::placeholder {
-    color: var(--text-tertiary) !important;
-    opacity: 0.7 !important;
-    transition: all var(--transition-normal);
-    font-style: italic;
-    font-size: 0.95em;
-}
-
-input:focus::placeholder,
-textarea:focus::placeholder {
-    opacity: 0.4 !important;
-    transform: translateX(8px);
-    color: var(--text-disabled) !important;
-    font-size: 0.9em;
-}
-
-/* Create a subtle floating placeholder effect */
-.form-field {
-    position: relative;
-}
-
-.form-field.has-value label,
-.form-field input:focus ~ label,
-.form-field textarea:focus ~ label,
-.form-field select:focus ~ label {
-    font-size: 0.8rem;
-    transform: translateY(-150%);
-    color: var(--magenta-light) !important;
-    background: transparent;
-}
-
-/* Auth form inputs with consistent style */
-.appearance-none {
-    background-color: var(--dark-bg) !important;
-    border-color: var(--border-color) !important;
-    color: var(--text-color) !important;
-    box-shadow:
-        var(--shadow-inset),
-        inset 0 1px 1px rgba(0, 0, 0, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.appearance-none:focus {
-    border-color: var(--magenta-primary) !important;
-    box-shadow: 0 0 0 2px var(--magenta-glow), var(--shadow-inset) !important;
-    transform: translateY(-1px);
-}
-
-.border-gray-300 {
-    border-color: var(--border-color) !important;
-}
-
-.rounded-t-md, .rounded-b-md, .rounded-md {
-    border-radius: 0.375rem !important;
-}
-
-/* Improve form layout spacing and structure */
-.form-group {
-    margin-bottom: 1.25rem;
-    position: relative;
-}
-
-/* Buttons - Enhanced with depth, animations and visual appeal */
-.btn, button[type="submit"], .bg-blue-600, .bg-blue-500, .bg-blue-700 {
-    background-color: var(--magenta-primary) !important;
-    background-image: var(--gradient-magenta) !important;
-    color: var(--text-color) !important;
-    transition: all var(--transition-bounce);
-    border: none;
-    padding: 0.75rem 1.85rem;
-    border-radius: var(--radius-md);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: var(--letter-spacing-wide);
-    position: relative;
-    overflow: hidden;
-    box-shadow:
-        var(--shadow-sm),
-        inset 0 1px 2px rgba(255, 255, 255, 0.2),
-        inset 0 -1px 1px rgba(0, 0, 0, 0.2),
-        0 2px 4px rgba(0, 0, 0, 0.3);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-    transform-origin: center;
-    backface-visibility: hidden; /* Prevents flicker during animations */
-    z-index: 1;
-    font-size: 0.975rem;
-}
-
-/* Highlight effect overlays */
-.btn:before, button[type="submit"]:before, .bg-blue-600:before, .bg-blue-500:before, .bg-blue-700:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom,
-        rgba(255,255,255,0.18) 0%,
-        rgba(255,255,255,0.08) 40%,
-        rgba(0,0,0,0.08) 60%,
-        rgba(0,0,0,0.15) 100%);
-    opacity: 0.85;
-    transition: opacity var(--transition-normal), transform var(--transition-bounce);
-    z-index: -1;
-}
-
-/* Button glow effect */
-.btn:after, button[type="submit"]:after, .bg-blue-600:after, .bg-blue-500:after, .bg-blue-700:after {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    background: var(--magenta-glow-faint);
-    border-radius: calc(var(--radius-md) + 3px);
-    z-index: -2;
-    opacity: 0;
-    transition: opacity var(--transition-normal), transform var(--transition-bounce);
-    transform: scale(0.95);
-}
-
-/* Hover state - lift, glow, and color shift */
-.btn:hover, button[type="submit"]:hover, .bg-blue-600:hover, .bg-blue-500:hover, .bg-blue-700:hover {
-    background-color: var(--magenta-light) !important;
-    background-image: linear-gradient(135deg, var(--magenta-light) 0%, var(--magenta-primary) 100%) !important;
-    box-shadow:
-        var(--shadow-glow),
-        var(--shadow-md),
-        0 4px 8px rgba(0, 0, 0, 0.4),
-        inset 0 1px 3px rgba(255, 255, 255, 0.3);
-    cursor: pointer;
-    transform: translateY(-3px) scale(1.04);
-    letter-spacing: var(--letter-spacing-wide);
-    color: white !important;
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* Active state - pressed down effect */
-.btn:active, button[type="submit"]:active, .bg-blue-600:active, .bg-blue-500:active, .bg-blue-700:active {
-    transform: translateY(-1px) scale(0.98);
-    box-shadow:
-        var(--shadow-sm),
-        0 2px 4px rgba(0, 0, 0, 0.3),
-        inset 0 1px 2px rgba(0, 0, 0, 0.2);
-    background-image: linear-gradient(135deg, var(--magenta-primary) 0%, var(--magenta-darker) 100%) !important;
-    transition: all 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.btn:hover:before, button[type="submit"]:hover:before, .bg-blue-600:hover:before, .bg-blue-500:hover:before, .bg-blue-700:hover:before {
-    opacity: 1;
-    transform: translateY(-2px);
-}
-
-.btn:hover:after, button[type="submit"]:hover:after, .bg-blue-600:hover:after, .bg-blue-500:hover:after, .bg-blue-700:hover:after {
-    opacity: 0.7;
-    animation: buttonGlow 2s infinite alternate ease-in-out;
-    transform: scale(1.03);
-}
-
-@keyframes buttonGlow {
-    0% { opacity: 0.4; box-shadow: 0 0 5px var(--magenta-glow-faint); }
-    25% { opacity: 0.6; box-shadow: 0 0 10px var(--magenta-glow); }
-    50% { opacity: 0.8; box-shadow: 0 0 15px var(--magenta-glow); }
-    75% { opacity: 0.7; box-shadow: 0 0 12px var(--magenta-glow-strong); }
-    100% { opacity: 0.9; box-shadow: 0 0 20px var(--magenta-glow-strong); }
-}
-
-/* Form validation feedback styling */
-.form-feedback {
-    margin-top: 0.5rem;
-    font-size: 0.875rem;
-    border-radius: var(--radius-sm);
-    padding: 0.5rem 0.75rem;
-    position: relative;
-    overflow: hidden;
-    transition: all var(--transition-normal);
-}
-
-/* Error state styling */
-.form-feedback.error,
-.invalid-feedback,
-.error-message {
-    background-color: rgba(220, 38, 38, 0.08);
-    color: rgb(248, 113, 113);
-    border-left: 3px solid rgb(220, 38, 38);
-}
-
-/* Success state styling */
-.form-feedback.success,
-.valid-feedback,
-.success-message {
-    background-color: rgba(16, 185, 129, 0.08);
-    color: rgb(52, 211, 153);
-    border-left: 3px solid rgb(16, 185, 129);
-}
-
-/* Input validation visual states */
-input.is-invalid,
-select.is-invalid,
-textarea.is-invalid {
-    border-color: rgb(220, 38, 38) !important;
-    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.25) !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23dc2626' viewBox='0 0 16 16'%3E%3Cpath d='M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right calc(0.375em + 0.1875rem) center;
-    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-    padding-right: calc(1.5em + 0.75rem) !important;
-}
-
-input.is-valid,
-select.is-valid,
-textarea.is-valid {
-    border-color: rgb(16, 185, 129) !important;
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25) !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2310b981' viewBox='0 0 16 16'%3E%3Cpath d='M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right calc(0.375em + 0.1875rem) center;
-    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
-    padding-right: calc(1.5em + 0.75rem) !important;
-}
-/* Active state - press down effect */
-.btn:active, button[type="submit"]:active, .bg-blue-600:active, .bg-blue-500:active, .bg-blue-700:active {
-    transform: translateY(2px) scale(0.97);
-    background-image: linear-gradient(135deg, var(--magenta-dark) 0%, var(--magenta-primary) 100%) !important;
-    box-shadow:
-        var(--shadow-glow-subtle),
-        inset 0 3px 5px rgba(0, 0, 0, 0.3),
-        inset 0 1px 1px rgba(0, 0, 0, 0.2);
-    transition: all 0.1s ease-out;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn:active:before, button[type="submit"]:active:before, .bg-blue-600:active:before, .bg-blue-500:active:before, .bg-blue-700:active:before {
-    opacity: 0.5;
-    transform: translateY(0);
-}
-
-/* Focus state - accessibility ring */
-.btn:focus, button[type="submit"]:focus, .bg-blue-600:focus, .bg-blue-500:focus, .bg-blue-700:focus {
-    outline: none;
-    box-shadow:
-        0 0 0 3px var(--magenta-glow),
-        0 0 8px var(--magenta-glow-faint),
-        var(--shadow-sm),
-        inset 0 1px 1px rgba(255, 255, 255, 0.15);
-}
-
-/* Ensure focus-visible for keyboard navigation - accessibility improvement */
-.btn:focus-visible, button[type="submit"]:focus-visible, .bg-blue-600:focus-visible,
-.bg-blue-500:focus-visible, .bg-blue-700:focus-visible {
-    outline: 2px solid white;
-    outline-offset: 2px;
-}
-
-/* Button with icon spacing */
-.btn svg, button[type="submit"] svg, .bg-blue-600 svg, .bg-blue-500 svg, .bg-blue-700 svg {
-    margin-right: 0.5rem;
-    transition: transform var(--transition-bounce);
-}
-
-.btn:hover svg, button[type="submit"]:hover svg, .bg-blue-600:hover svg, .bg-blue-500:hover svg, .bg-blue-700:hover svg {
-    transform: scale(1.15);
-}
-
-/* Loading state for buttons */
-.btn.loading, button[type="submit"].loading, .bg-blue-600.loading, .bg-blue-500.loading, .bg-blue-700.loading {
-    position: relative;
-    color: transparent !important;
-    pointer-events: none;
-}
-
-.btn.loading:after, button[type="submit"].loading:after, .bg-blue-600.loading:after, .bg-blue-500.loading:after, .bg-blue-700.loading:after {
-    content: '';
-    position: absolute;
-    top: calc(50% - 0.5em);
-    left: calc(50% - 0.5em);
-    width: 1em;
-    height: 1em;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 0.8s linear infinite;
-    opacity: 1;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Disabled state */
-.btn:disabled, button[type="submit"]:disabled, .bg-blue-600:disabled, .bg-blue-500:disabled, .bg-blue-700:disabled {
-    background-image: linear-gradient(135deg, var(--surface-3), var(--surface-2)) !important;
-    color: var(--text-disabled) !important;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-    opacity: 0.7;
-}
-
-/* Button variations with enhanced styling */
-.btn-secondary {
-    background-image: linear-gradient(135deg, var(--surface-2), var(--surface-3)) !important;
-    background-color: var(--surface-2) !important;
-    color: var(--text-color) !important;
-    border: 1px solid var(--border-color);
-    box-shadow:
-        var(--shadow-xs),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.btn-secondary:hover {
-    background-color: var(--surface-3) !important;
-    background-image: linear-gradient(135deg, var(--surface-2) 30%, var(--surface-3) 100%) !important;
-    box-shadow: var(--shadow-md);
-    border-color: var(--border-color-light);
-}
-
-.btn-secondary:active {
-    background-image: linear-gradient(135deg, var(--surface-3), var(--surface-2)) !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.btn-outline {
-    background-color: transparent !important;
-    background-image: none !important;
-    border: 2px solid var(--magenta-primary);
-    color: var(--magenta-primary) !important;
-    box-shadow: none;
-    text-shadow: none;
-    position: relative;
-    z-index: 1;
-}
-
-.btn-outline:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--magenta-primary);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-    z-index: -1;
-    border-radius: calc(var(--radius-md) - 2px);
-}
-
-.btn-outline:hover {
-    color: var(--text-color) !important;
-    border-color: var(--magenta-light);
-    box-shadow: var(--shadow-glow-faint);
-    transform: translateY(-1px);
-}
-
-.btn-outline:hover:before {
-    opacity: 0.15;
-}
-
-.btn-outline:active {
-    transform: translateY(1px);
-    box-shadow: none;
-}
-
-.btn-small {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
-}
-
-.btn-large {
-    padding: 0.75rem 2rem;
-    font-size: 1.1rem;
-}
-
-/* Floating action button */
-.btn-float {
-    border-radius: var(--radius-full);
-    width: 3.5rem;
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    box-shadow: var(--shadow-lg);
-}
-
-.btn-float:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: var(--shadow-xl), var(--shadow-glow);
-}
-
-/* Enhanced checkbox and radio buttons */
-input[type="checkbox"], input[type="radio"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 1.35rem;
-    height: 1.35rem;
-    border: 2px solid var(--border-color-light);
-    background-color: var(--dark-bg);
-    position: relative;
-    cursor: pointer;
-    margin-right: 0.625rem;
-    vertical-align: middle;
-    transition: all var(--transition-bounce);
-    box-shadow:
-        inset 0 1px 2px rgba(0, 0, 0, 0.15),
-        0 1px 0 rgba(255, 255, 255, 0.05);
-    background-image: linear-gradient(to bottom,
-        rgba(0, 0, 0, 0.2),
-        transparent 60%);
-}
-
-input[type="checkbox"] {
-    border-radius: var(--radius-sm);
-}
-
-input[type="radio"] {
-    border-radius: var(--radius-full);
-}
-
-input[type="checkbox"]:hover, input[type="radio"]:hover {
-    border-color: var(--magenta-primary);
-    background-color: var(--surface-1);
-    transform: scale(1.08);
-    box-shadow:
-        inset 0 1px 2px rgba(0, 0, 0, 0.1),
-        0 0 5px var(--magenta-glow-faint);
-}
-
-input[type="checkbox"]:active, input[type="radio"]:active {
-    transform: scale(0.92);
-}
-
-input[type="checkbox"]:checked, input[type="radio"]:checked {
-    background-color: var(--magenta-primary);
-    border-color: var(--magenta-light);
-    box-shadow:
-        0 0 8px var(--magenta-glow-faint),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.2),
-        inset 0 1px 1px rgba(255, 255, 255, 0.2);
-    background-image: linear-gradient(to bottom,
-        var(--magenta-light) 0%,
-        var(--magenta-primary) 100%);
-}
-
-input[type="checkbox"]:checked:after {
-    content: '';
-    position: absolute;
-    top: 0.15rem;
-    left: 0.35rem;
-    width: 0.4rem;
-    height: 0.75rem;
-    border: solid white;
-    border-width: 0 2.5px 2.5px 0;
-    transform: rotate(45deg);
-    animation: checkmarkAppear 0.2s var(--transition-bounce);
-}
-
-@keyframes checkmarkAppear {
-    0% { opacity: 0; transform: rotate(45deg) scale(0.5); }
-    50% { opacity: 1; transform: rotate(45deg) scale(1.3); }
-    100% { opacity: 1; transform: rotate(45deg) scale(1); }
-}
-
-input[type="radio"]:checked:after {
-    content: '';
-    position: absolute;
-    top: calc(50% - 0.275rem);
-    left: calc(50% - 0.275rem);
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    background-color: white;
-    box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
-    animation: radioAppear 0.3s var(--transition-bounce);
-}
-
-@keyframes radioAppear {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.4); opacity: 0.5; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-input[type="checkbox"]:focus, input[type="radio"]:focus {
-    outline: none;
-    border-color: var(--magenta-light);
-    box-shadow: 0 0 0 3px var(--magenta-glow-faint);
-}
-
-/* Make checkbox labels align properly and enhance their appearance */
-input[type="checkbox"] + label,
-input[type="radio"] + label {
-    display: inline-block;
-    padding-left: 0.25rem;
-    vertical-align: middle;
-    transition: all var(--transition-bounce);
-    padding: 0.15rem 0.5rem;
-    border-radius: var(--radius-sm);
-}
-
-input[type="checkbox"]:hover + label,
-input[type="radio"]:hover + label {
-    color: var(--magenta-lighter);
-}
-
-input[type="checkbox"]:checked + label,
-input[type="radio"]:checked + label {
-    color: var(--magenta-light);
-    text-shadow: 0 0 5px var(--magenta-glow-faint);
-}
-
-/* Checkbox and radio button container for better alignment */
-.checkbox-container,
-.radio-container {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    padding: 0.25rem;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-normal);
-}
-
-.checkbox-container:hover,
-.radio-container:hover {
-    background-color: rgba(232, 62, 140, 0.05);
-}
-
-/* Enhanced select dropdowns */
-select {
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e83e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-    background-size: 1em !important;
-    padding-right: 2.75rem !important;
-    cursor: pointer;
-    background-color: var(--dark-bg) !important;
-    border: 1px solid var(--border-color) !important;
-    color: var(--text-color) !important;
-    border-radius: var(--radius-md);
-    transition: all var(--transition-bounce);
-    z-index: 1;
-    position: relative;
-}
-
-select:hover {
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff4fa3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
-    border-color: var(--border-color-light) !important;
-    background-color: var(--surface-1) !important;
-}
-
-select:focus {
-    border-color: var(--magenta-primary) !important;
-    box-shadow: 0 0 0 3px var(--magenta-glow-faint) !important;
-    outline: none;
-}
-
-/* Custom select styling for enhanced appearance */
-.custom-select {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-
-.custom-select select {
-    width: 100%;
-}
-
-.custom-select:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 2.5rem;
-    height: 100%;
-    background-color: rgba(232, 62, 140, 0.1);
-    pointer-events: none;
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    transition: all var(--transition-normal);
-}
-
-.custom-select:hover:after {
-    background-color: rgba(232, 62, 140, 0.2);
-}
-
-/* Form validation feedback enhancements */
-.is-valid, input.is-valid, select.is-valid, textarea.is-valid {
-    border-color: var(--success) !important;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2328a745' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='20 6 9 17 4 12'%3e%3c/polyline%3e%3c/svg%3e") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-    background-size: 1em !important;
-    padding-right: 2.5rem !important;
-    box-shadow:
-        0 0 0 1px var(--success-light),
-        inset 0 1px 1px rgba(0, 0, 0, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-.is-invalid, input.is-invalid, select.is-invalid, textarea.is-invalid {
-    border-color: var(--danger) !important;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dc3545' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cline x1='18' y1='6' x2='6' y2='18'%3e%3c/line%3e%3cline x1='6' y1='6' x2='18' y2='18'%3e%3c/line%3e%3c/svg%3e") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 0.75rem center !important;
-    background-size: 1em !important;
-    padding-right: 2.5rem !important;
-    box-shadow:
-        0 0 0 1px var(--danger-light),
-        inset 0 1px 1px rgba(0, 0, 0, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Validation message styling */
-.invalid-feedback, .text-red-500 {
-    color: var(--danger-light) !important;
-    font-size: 0.85rem;
-    margin-top: 0.4rem;
-    display: block;
-    font-weight: var(--font-weight-medium);
-    animation: fadeInUp 0.3s ease-out;
-    background-color: rgba(220, 53, 69, 0.07);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--danger);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.05),
-        0 1px 3px rgba(0, 0, 0, 0.1);
-    position: relative;
-}
-
-.invalid-feedback:before, .text-red-500:before {
-    content: '⚠️';
-    margin-right: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.valid-feedback {
-    color: var(--success-light) !important;
-    font-size: 0.85rem;
-    margin-top: 0.4rem;
-    display: block;
-    animation: fadeInUp 0.3s ease-out;
-    background-color: rgba(40, 167, 69, 0.07);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--success);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.05),
-        0 1px 3px rgba(0, 0, 0, 0.1);
-    position: relative;
-}
-
-.valid-feedback:before {
-    content: '✓';
-    margin-right: 0.5rem;
-    font-size: 1rem;
-    font-weight: bold;
-}
-
-@keyframes fadeInUp {
-    0% {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    70% {
-        transform: translateY(-2px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Form field with validation visual cues */
-.form-field.error label {
-    color: var(--danger-light) !important;
-}
-
-.form-field.error label:before {
-    background: var(--danger);
-}
-
-.form-field.success label {
-    color: var(--success-light) !important;
-}
-
-.form-field.success label:before {
-    background: var(--success);
-}
-
-/* Submit buttons with enhanced animations */
-[type="submit"] {
-    background-color: var(--magenta-primary) !important;
-    background-image: var(--gradient-magenta) !important;
-    color: var(--text-color) !important;
-    transition: all var(--transition-bounce);
-    font-weight: var(--font-weight-medium);
-    position: relative;
-    overflow: hidden;
-}
-
-[type="submit"]:hover {
-    background-color: var(--magenta-light) !important;
-    background-image: linear-gradient(135deg, var(--magenta-light) 0%, var(--magenta-primary) 100%) !important;
-    box-shadow:
-        var(--shadow-glow),
-        var(--shadow-md),
-        inset 0 1px 2px rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px) scale(1.03);
-}
-
-[type="submit"]:active {
-    transform: translateY(1px) scale(0.98);
-    box-shadow: var(--shadow-glow-subtle);
-    transition: all 0.1s ease-out;
-}
-
-/* Submit button shimmer effect */
-[type="submit"]:after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-        to right,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        rgba(255, 255, 255, 0) 100%
-    );
-    transform: rotate(30deg);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-[type="submit"]:hover:after {
-    animation: shimmer 1.5s ease-in-out;
-}
-
-@keyframes shimmer {
-    0% {
-        opacity: 0;
-        transform: rotate(30deg) translateX(-150%);
-    }
-    20% {
-        opacity: 0.3;
-    }
-    100% {
-        opacity: 0;
-        transform: rotate(30deg) translateX(150%);
-    }
-}
-
-/* Form elements responsiveness */
-@media (max-width: 768px) {
-    input, select, textarea {
-        font-size: 1rem; /* Slightly larger on mobile for better touch targets */
-        padding: 0.75rem 1.15rem; /* More padding on mobile */
-    }
-    
-    label {
-        font-size: 1rem;
-        margin-bottom: 0.625rem;
-    }
-    
-    .form-group {
-        margin-bottom: 1.25rem;
-    }
-    
-    .btn, button[type="submit"] {
-        width: 100%; /* Full width buttons on mobile */
-        padding: 0.85rem 1.25rem;
-        font-size: 1.05rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    
-    input[type="checkbox"], input[type="radio"] {
-        width: 1.5rem;
-        height: 1.5rem;
-    }
-    
-    input[type="checkbox"]:checked:after {
-        top: 0.25rem;
-        left: 0.45rem;
-        width: 0.45rem;
-        height: 0.8rem;
-        border-width: 0 3px 3px 0;
-    }
-    
-    input[type="radio"]:checked:after {
-        top: calc(50% - 0.3rem);
-        left: calc(50% - 0.3rem);
-        width: 0.6rem;
-        height: 0.6rem;
-    }
-    
-    .invalid-feedback, .valid-feedback, .text-red-500 {
-        font-size: 0.9rem;
-        padding: 0.6rem 0.8rem;
-    }
-    
-    /* Stack form fields in columns on very small screens */
-    @media (max-width: 480px) {
-        .flex-row {
-            flex-direction: column;
-        }
-        
-        .form-inline .form-group {
-            width: 100%;
-            margin-right: 0;
-        }
-        
-        /* Add more space between stacked form elements */
-        input, select, textarea {
-            margin-bottom: 0.5rem;
-        }
-        
-        .btn + .btn {
-            margin-top: 0.75rem;
-        }
-    }
-}
-
-/* Tables */
-table {
-    background-color: var(--card-bg);
-    background-image: var(--gradient-card);
-    color: var(--text-color);
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    margin-bottom: 1.5rem;
-    border-radius: 0.5rem;
-    box-shadow: var(--shadow-md);
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-}
-
-table th, table td {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-    transition: background-color var(--transition-fast);
-    position: relative;
-}
-
-table th:last-child, table td:last-child {
-    border-right: none;
-}
-
-table tr:last-child td {
-    border-bottom: none;
-}
-
-table th {
-    background-color: var(--surface-2);
-    font-weight: var(--font-weight-semibold);
-    text-align: left;
-    letter-spacing: var(--letter-spacing-wide);
-    text-transform: uppercase;
-    font-size: 0.85em;
-}
-
-table tbody tr:hover td {
-    background-color: var(--highlight-hover);
-}
-
-table tbody tr:hover {
-    box-shadow: var(--shadow-sm);
-}
-
-/* Ensure all text is readable on dark backgrounds */
-.text-black {
-    color: var(--text-color) !important;
-}
-
-/* Additional styling for welcome page */
-.text-5xl {
-    text-shadow: 0 0 10px var(--magenta-glow), 0 0 30px var(--magenta-glow-subtle);
-    letter-spacing: var(--letter-spacing-wider);
-    font-weight: var(--font-weight-bold);
-    background: var(--gradient-magenta);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent !important;
-    -webkit-text-fill-color: transparent;
-}
-/* Additional alert styles for Bootstrap-like alerts */
-.alert {
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.25rem;
-    border: 1px solid transparent;
-    border-radius: 0.375rem;
-    color: var(--text-color);
-    background-color: var(--card-bg);
-    background-image: var(--gradient-card);
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    padding-left: 1.5rem;
-    overflow: hidden;
-}
-
-.alert:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 4px;
-}
-
-.alert-success {
-    background-color: rgba(40, 167, 69, 0.1);
-    border-color: var(--success);
-}
-
-.alert-success:before {
-    background-color: var(--success);
-}
-
-.alert-info {
-    background-color: rgba(232, 62, 140, 0.1);
-    border-color: var(--magenta-primary);
-}
-
-.alert-info:before {
-    background-color: var(--magenta-primary);
-}
-
-.alert-warning {
-    background-color: rgba(255, 193, 7, 0.1);
-    border-color: var(--warning);
-}
-
-.alert-warning:before {
-    background-color: var(--warning);
-}
-
-.alert-danger {
-    background-color: rgba(220, 53, 69, 0.1);
-    border-color: var(--danger);
-}
-
-.alert-danger:before {
-    background-color: var(--danger);
-}
-
-/* Make all bg-gray-50 and bg-gray-100 elements use dark background */
-.bg-gray-50, .bg-gray-100 {
-    background-color: var(--dark-bg) !important;
-    background-image: var(--gradient-bg);
-}
-
-/* Ensure consistent border colors */
-.border-gray-200, .border-gray-300 {
-    border-color: var(--border-color) !important;
-}
-
-/* Add mobile responsiveness improvements */
-@media (max-width: 768px) {
-    .flash-message {
-        max-width: 90vw;
-    }
-    
-    table {
-        overflow-x: auto;
-        display: block;
-    }
-    
-    table th, table td {
-        white-space: nowrap;
-    }
-}
-
-/* Scrollbars */
-::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--darker-bg);
-    border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--highlight);
-    border-radius: 5px;
-    transition: all var(--transition-normal);
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--magenta-muted);
-}
-
-/* Focus styles for accessibility */
-:focus {
-    outline: 2px solid var(--magenta-glow);
-    outline-offset: 2px;
-}
-
-/* Selection styling */
-::selection {
-    background-color: var(--magenta-primary);
-    color: var(--text-color);
-}
-
-/* Code blocks */
-code, pre {
-    font-family: 'Courier New', Courier, monospace;
-    background-color: var(--surface-1);
-    color: var(--text-color);
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 0.9em;
-    border: 1px solid var(--border-color);
-}
-
-pre {
-    padding: 1rem;
-    overflow-x: auto;
-    line-height: 1.5;
-    background-image: linear-gradient(to bottom, var(--surface-1), var(--surface-2));
-}
-
-pre code {
-    background-color: transparent;
-    padding: 0;
-    border: none;
-}
-
-
-/* Progress Bar Container */
-.progress-container {
-    width: 100%;
-    background-color: #1e1e1e;
-    border-radius: 1rem;
-    margin-bottom: 1rem;
-    overflow: hidden;
-    height: 0.75rem;
-    position: relative;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* Progress Bar Indicator */
-#progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #e83e8c 0%, #ff4fa3 100%);
-    border-radius: 1rem;
-    transition: width 0.5s ease-in-out;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 0 8px rgba(232, 62, 140, 0.6);
-}
-
-/* Shimmer effect */
-#progress-bar:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-    100% {
-        left: 100%;
-    }
-}
-
-/* Progress label styling */
-#progress-label {
-    color: #d4d4d4;
-    font-size: 0.875rem;
-    margin-top: 0.5rem;
-    font-weight: 500;
-}
-
-/* Step indicators */
-.step-indicator {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    margin-right: 0.5rem;
-    background-color: #323232;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-}
-
-/* Active step */
-.step-active {
-    background-color: #4285f4;
-    box-shadow: 0 0 8px rgba(66, 133, 244, 0.5);
-    animation: pulse 1.5s infinite alternate;
-}
-
-/* Completed step */
-.step-completed {
-    background-color: #28a745;
-    box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scale(1.1);
-        opacity: 1;
-    }
-}
-
-/* Step text styling */
-#steps-container li {
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    transition: color 0.3s ease;
-}
-
-#steps-container li.active {
-    color: #f2f2f2;
-}
-
-#steps-container li.completed {
-    color: #b8b8b8;
-}
+<REDACTED FOR BREVITY>
 ```
 
 
@@ -5685,7 +2316,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(event) {
         if (userMenuButton && userMenu && !userMenu.classList.contains('hidden') &&
             !userMenu.contains(event.target) &&
-            !userMenuButton.contains(event.target)) {
+            userMenuButton && !userMenuButton.contains(event.target)) { // check userMenuButton exists
             userMenu.classList.add('hidden');
         }
     });
@@ -5712,7 +2343,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (flashMessages.length > 0) {
         setTimeout(function() {
             flashMessages.forEach(function(message) {
-                // Add a fade-out effect (optional)
                 message.style.transition = 'opacity 0.5s ease';
                 message.style.opacity = '0';
                 setTimeout(() => { message.style.display = 'none'; }, 500);
@@ -5724,43 +2354,66 @@ document.addEventListener('DOMContentLoaded', function() {
     // window.dynadash_current_user_id is set in base.html
     if (typeof window.dynadash_current_user_id !== 'undefined' && window.dynadash_current_user_id !== null) {
         try {
-            const socket = io(); // Ensure io is defined (Socket.IO client loaded)
+            const socket = io(); 
             socket.on('connect', function() {
-                console.log('Socket.IO connected');
+                console.log('Socket.IO connected, SID:', socket.id);
                 socket.emit('join', { user_id: window.dynadash_current_user_id });
             });
-            socket.on('disconnect', function() {
-                console.log('Socket.IO disconnected');
+            socket.on('disconnect', function(reason) {
+                console.log('Socket.IO disconnected:', reason);
             });
             socket.on('connect_error', (err) => {
-                console.error('Socket.IO connection error:', err);
+                console.error('Socket.IO connection error:', err.message, err.data);
             });
-             // Listen for progress updates (this is more generic, specific handling might be in other files)
+            
+            // Generic progress handlers previously in visual_generate.js are moved here
+            // as they are more general. Specific pages might override or add more details.
             socket.on('progress_update', function(data) {
                 console.log('Progress update:', data);
-                const progressBar = document.getElementById('progress-bar'); // General progress bar
-                const progressLabel = document.getElementById('progress-label'); // General progress label
+                const progressBar = document.getElementById('progress-bar'); 
+                const progressLabel = document.getElementById('progress-label');
                 if (progressBar) progressBar.style.width = data.percent + '%';
                 if (progressLabel) progressLabel.textContent = data.message;
-            });
-            socket.on('processing_complete', function(data) {
-                console.log('Processing complete:', data);
-                 const progressBar = document.getElementById('progress-bar');
-                const progressLabel = document.getElementById('progress-label');
-                if (progressBar) progressBar.style.width = '100%';
-                if (progressLabel) progressLabel.textContent = 'Processing complete!';
-                if (data && data.redirect_url) {
-                    window.location.href = data.redirect_url;
+                
+                // If a more specific handler exists (e.g., on generate page), it can update step indicators
+                if (typeof window.updateStepIndicator === 'function') {
+                    window.updateStepIndicator(data.percent);
                 }
             });
-            socket.on('processing_error', function(data) {
-                console.error('Processing error from server:', data);
-                alert('Error during processing: ' + data.message);
-                // Hide any general processing modal if one exists
-                const processingModal = document.getElementById('processing-modal');
-                if(processingModal) processingModal.classList.add('hidden');
+
+            socket.on('processing_complete', function(data) {
+                console.log('Processing complete:', data);
+                const progressBar = document.getElementById('progress-bar');
+                const progressLabel = document.getElementById('progress-label');
+                if (progressBar) progressBar.style.width = '100%';
+                if (progressLabel) progressLabel.textContent = 'Processing complete! Redirecting...';
+                
+                if (typeof window.updateStepIndicator === 'function') {
+                    window.updateStepIndicator(100);
+                }
+
+                if (data && data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                     const processingModal = document.getElementById('processing-modal');
+                     if(processingModal) setTimeout(() => { processingModal.classList.add('hidden'); }, 1500);
+                }
             });
 
+            socket.on('processing_error', function(data) {
+                console.error('Processing error from server:', data);
+                const progressLabel = document.getElementById('progress-label');
+                const errorMessageModal = document.getElementById('error-message-modal'); // Assuming this ID exists on modal
+                
+                if(progressLabel) progressLabel.textContent = 'Error occurred.';
+                if(errorMessageModal) {
+                    errorMessageModal.textContent = 'Error: ' + data.message;
+                    errorMessageModal.classList.remove('hidden');
+                } else {
+                    alert('Error during processing: ' + data.message); 
+                }
+                // Don't automatically hide processing modal on error, let user see message.
+            });
 
         } catch (e) {
             console.error("Failed to initialize Socket.IO. Is the library loaded?", e);
@@ -5774,172 +2427,177 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ```
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("✅ dashboard_renderer.js loaded");
+    console.log("✅ dashboard_renderer.js loaded");
 
-  const dashboardFrame = document.getElementById('dashboard-frame');
-  const fullscreenFrame = document.getElementById('fullscreen-frame');
-  const loadingIndicator = document.getElementById('dashboard-loading');
-  const dashboardError = document.getElementById('dashboard-error');
+    const dashboardFrame = document.getElementById('dashboard-frame');
+    const fullscreenFrame = document.getElementById('fullscreen-frame');
+    const loadingIndicator = document.getElementById('dashboard-loading');
+    const dashboardError = document.getElementById('dashboard-error');
 
-  // Data and template are now expected to be on the window object
-  // They are injected by app/templates/visual/view.html
-  const dashboardTemplateHtml = window.dynadashDashboardTemplateHtml; 
-  const actualDatasetJson = window.dynadashDatasetJson; // This is already a JS object/array
+    // Data and template are now expected to be on the window object
+    // They are injected by app/templates/visual/view.html's head_scripts block
+    const dashboardTemplateHtml = window.dynadashDashboardTemplateHtml; 
+    const actualDatasetData = window.dynadashDatasetJson; 
 
-  function buildFullHtml(template, data) {
-      if (!template) {
-          console.error("Dashboard template is missing.");
-          return "<html><body>Error: Dashboard template missing.</body></html>";
-      }
-      // Create the script tag to inject data
-      // The data is already a JS object/array from the template, so stringify it
-      const dataScript = `<script>window.dynadashData = ${JSON.stringify(data)};<\/script>`;
-      
-      // Inject data script into the head or start of body for early availability
-      let finalHtml = template;
-      if (template.includes("</head>")) {
-          finalHtml = template.replace("</head>", dataScript + "\n</head>");
-      } else if (template.includes("<body>")) {
-          finalHtml = template.replace("<body>", "<body>\n" + dataScript);
-      } else {
-          // Fallback if no head or body, prepend (less ideal)
-          finalHtml = dataScript + template;
-      }
-      return finalHtml;
-  }
+    function buildFullHtml(template, data) {
+        if (typeof template !== 'string' || !template) {
+            console.error("Dashboard template is missing or not a string.");
+            return "<html><body>Error: Dashboard template missing.</body></html>";
+        }
+        // Ensure data is an array, default to empty if undefined/null
+        const dataToInject = (typeof data !== 'undefined' && data !== null) ? data : [];
+        const dataScript = `<script>window.dynadashData = ${JSON.stringify(dataToInject)};<\/script>`;
+        
+        let finalHtml = template;
+        const headEndTag = '</head>';
+        const bodyStartTag = '<body>';
+        const headEndIndex = template.toLowerCase().lastIndexOf(headEndTag); // Use lastIndexOf for head
+        const bodyStartIndex = template.toLowerCase().indexOf(bodyStartTag);
 
-  function loadDashboard() {
-      if (!dashboardFrame || !fullscreenFrame || !loadingIndicator || !dashboardError) {
-          console.error("One or more dashboard elements are missing from the DOM.");
-          return;
-      }
-      
-      if (!dashboardTemplateHtml) {
-          console.error("Dashboard template HTML is not available (window.dynadashDashboardTemplateHtml).");
-          showDashboardError("Dashboard template is missing.");
-          return;
-      }
-      if (typeof actualDatasetJson === 'undefined') { // Check if it's defined at all
-           console.error("Actual dataset JSON is not available (window.dynadashDatasetJson).");
-          // Allow dashboard to load with empty data, internal JS should handle this
-          // showDashboardError("Dataset for dashboard is missing.");
-          // return;
-      }
+        if (headEndIndex !== -1) {
+            finalHtml = template.slice(0, headEndIndex) + dataScript + "\n" + template.slice(headEndIndex);
+        } else if (bodyStartIndex !== -1) {
+            finalHtml = template.slice(0, bodyStartIndex + bodyStartTag.length) + "\n" + dataScript + template.slice(bodyStartIndex + bodyStartTag.length);
+        } else {
+            finalHtml = dataScript + template; 
+        }
+        return finalHtml;
+    }
 
+    function loadDashboard() {
+        if (!dashboardFrame || !loadingIndicator || !dashboardError) { // fullscreenFrame is optional for this function
+            console.error("One or more essential dashboard display elements are missing from the DOM.");
+            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            if (dashboardError) {
+                 dashboardError.style.display = 'block';
+                 dashboardError.querySelector('p').textContent = "Essential dashboard elements missing from page.";
+            }
+            return;
+        }
+        
+        if (typeof dashboardTemplateHtml === 'undefined' || dashboardTemplateHtml === null || dashboardTemplateHtml.trim() === "") {
+            console.error("Dashboard template HTML is not available (window.dynadashDashboardTemplateHtml is empty or undefined).");
+            showDashboardError("Dashboard template is missing or could not be loaded.");
+            return;
+        }
 
-      loadingIndicator.style.display = 'flex';
-      dashboardError.style.display = 'none';
-      dashboardFrame.style.display = 'none';
-      fullscreenFrame.style.display = 'none';
-
-
-      try {
-          const fullHtmlContent = buildFullHtml(dashboardTemplateHtml, actualDatasetJson);
-
-          dashboardFrame.srcdoc = fullHtmlContent;
-          fullscreenFrame.srcdoc = fullHtmlContent; // Also for fullscreen
-
-          let primaryFrameLoaded = false;
-
-          dashboardFrame.onload = function () {
-              console.log("Dashboard iframe loaded.");
-              primaryFrameLoaded = true;
-              loadingIndicator.style.display = 'none';
-              dashboardFrame.style.display = 'block';
-              // checkDashboardLoaded(dashboardFrame); // Optional check if content truly rendered
-          };
-
-          dashboardFrame.onerror = function () {
-              console.error("Error loading dashboard iframe content.");
-              showDashboardError("Failed to load dashboard content in iframe.");
-          };
-          
-          // Fallback timer if onload doesn't fire or content is minimal
-          setTimeout(() => {
-              if (!primaryFrameLoaded && loadingIndicator.style.display !== 'none') {
-                  console.warn("Dashboard iframe onload event did not fire or content is minimal after timeout. Attempting to show anyway or show error.");
-                   // A simple check, might need to be more robust
-                  if (dashboardFrame.contentDocument && dashboardFrame.contentDocument.body && dashboardFrame.contentDocument.body.children.length > 0) {
-                      loadingIndicator.style.display = 'none';
-                      dashboardFrame.style.display = 'block';
-                  } else {
-                      showDashboardError("Dashboard did not load correctly after timeout.");
-                  }
-              }
-          }, 7000); // Increased timeout
-
-      } catch (err) {
-          console.error("Error setting up dashboard srcdoc:", err);
-          showDashboardError(err.message);
-      }
-  }
-
-  function showDashboardError(message = "An unknown error occurred while loading the dashboard.") {
-      if (loadingIndicator) loadingIndicator.style.display = 'none';
-      if (dashboardError) {
-          dashboardError.style.display = 'block';
-          const p = dashboardError.querySelector('p');
-          if(p) p.textContent = message;
-      }
-      if (dashboardFrame) dashboardFrame.style.display = 'none';
-  }
-
-  // Fullscreen controls
-  const fullscreenBtn = document.getElementById('fullscreen-btn');
-  const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
-  const fullscreenContainer = document.getElementById('fullscreen-container');
-
-  if (fullscreenBtn && exitFullscreenBtn && fullscreenContainer) {
-      fullscreenBtn.addEventListener('click', () => {
-          fullscreenContainer.style.display = 'block';
-          document.body.style.overflow = 'hidden';
-          // Ensure fullscreen iframe is also loaded
-          if (fullscreenFrame.srcdoc !== dashboardFrame.srcdoc) { // only if not already set
-               fullscreenFrame.srcdoc = dashboardFrame.srcdoc;
-          }
-      });
-
-      exitFullscreenBtn.addEventListener('click', () => {
-          fullscreenContainer.style.display = 'none';
-          document.body.style.overflow = 'auto';
-      });
-
-      document.addEventListener('keydown', (e) => {
-          if (e.key === "Escape" && fullscreenContainer.style.display === 'block') {
-              fullscreenContainer.style.display = 'none';
-              document.body.style.overflow = 'auto';
-          }
-      });
-  }
-  
-  // Reload/Refresh buttons
-  document.getElementById('reload-dashboard-btn')?.addEventListener('click', loadDashboard); // Error specific
-  document.getElementById('refresh-btn-dashboard')?.addEventListener('click', loadDashboard); // General refresh
+        loadingIndicator.style.display = 'flex';
+        dashboardError.style.display = 'none';
+        dashboardFrame.style.display = 'none';
+        if(fullscreenFrame) fullscreenFrame.setAttribute('srcdoc', '');
 
 
-  // Download dashboard HTML (now includes injected data script)
-  const downloadBtn = document.getElementById('download-btn-dashboard');
-  if (downloadBtn) {
-      downloadBtn.addEventListener('click', () => {
-          if (!dashboardTemplateHtml) {
-              alert("No dashboard template to download.");
-              return;
-          }
-          const fullHtmlToDownload = buildFullHtml(dashboardTemplateHtml, actualDatasetJson);
-          const link = document.createElement('a');
-          const blob = new Blob([fullHtmlToDownload], { type: 'text/html' });
-          const url = URL.createObjectURL(blob);
-          link.href = url;
-          link.download = 'dynadash_dashboard.html';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-      });
-  }
+        try {
+            const fullHtmlContent = buildFullHtml(dashboardTemplateHtml, actualDatasetData);
+            
+            // Function to handle iframe load/error
+            const handleIframeLoad = (frameElement, isPrimary) => {
+                console.log(`Iframe ${frameElement.id} loaded.`);
+                if(isPrimary) {
+                    loadingIndicator.style.display = 'none';
+                    dashboardFrame.style.display = 'block';
+                }
+            };
 
-  // Start loading the dashboard
-  loadDashboard();
+            const handleIframeError = (frameElement, isPrimary, errorMsg) => {
+                console.error(`Error loading ${frameElement.id} iframe content:`, errorMsg);
+                if(isPrimary) {
+                    showDashboardError(`Failed to load dashboard content in iframe (${frameElement.id}).`);
+                }
+            };
+            
+            dashboardFrame.onload = () => handleIframeLoad(dashboardFrame, true);
+            dashboardFrame.onerror = (e) => handleIframeError(dashboardFrame, true, e.type);
+            dashboardFrame.setAttribute('srcdoc', fullHtmlContent);
+
+            if (fullscreenFrame) { 
+                fullscreenFrame.onload = () => handleIframeLoad(fullscreenFrame, false);
+                fullscreenFrame.onerror = (e) => handleIframeError(fullscreenFrame, false, e.type);
+                fullscreenFrame.setAttribute('srcdoc', fullHtmlContent);
+            }
+
+            // Fallback timer
+            setTimeout(() => {
+                const isDashboardFrameVisible = dashboardFrame.style.display === 'block';
+                if (!isDashboardFrameVisible && loadingIndicator.style.display !== 'none') {
+                    console.warn("Dashboard iframe onload event might not have fired as expected after timeout.");
+                    let frameDoc = dashboardFrame.contentDocument || dashboardFrame.contentWindow?.document;
+                    if (frameDoc && frameDoc.body && frameDoc.body.children.length > 0 && frameDoc.readyState === 'complete') {
+                        loadingIndicator.style.display = 'none';
+                        dashboardFrame.style.display = 'block';
+                    } else {
+                        showDashboardError("Dashboard did not load correctly or is empty after timeout.");
+                    }
+                }
+            }, 8000);
+
+        } catch (err) {
+            console.error("Error setting up dashboard srcdoc:", err);
+            showDashboardError("A JavaScript error occurred while preparing the dashboard: " + err.message);
+        }
+    }
+
+    function showDashboardError(message = "An unknown error occurred while loading the dashboard.") {
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (dashboardError) {
+            dashboardError.style.display = 'block';
+            const p = dashboardError.querySelector('p');
+            if(p) p.textContent = message;
+        }
+        if (dashboardFrame) dashboardFrame.style.display = 'none';
+    }
+
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
+    const fullscreenContainer = document.getElementById('fullscreen-container');
+
+    if (fullscreenBtn && exitFullscreenBtn && fullscreenContainer && fullscreenFrame) {
+        fullscreenBtn.addEventListener('click', () => {
+            fullscreenContainer.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        });
+
+        exitFullscreenBtn.addEventListener('click', () => {
+            fullscreenContainer.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape" && fullscreenContainer.style.display === 'block') {
+                exitFullscreenBtn.click();
+            }
+        });
+    }
+    
+    document.getElementById('reload-dashboard-btn')?.addEventListener('click', loadDashboard); 
+    document.getElementById('refresh-btn-dashboard')?.addEventListener('click', loadDashboard); 
+
+    const downloadBtn = document.getElementById('download-btn-dashboard');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            if (typeof dashboardTemplateHtml === 'undefined' || dashboardTemplateHtml === null) {
+                alert("No dashboard template available to download.");
+                return;
+            }
+            const fullHtmlToDownload = buildFullHtml(dashboardTemplateHtml, actualDatasetData || []);
+            const link = document.createElement('a');
+            const blob = new Blob([fullHtmlToDownload], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = 'dynadash_dashboard.html';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // Initial load
+    if (document.readyState === 'complete' || (document.readyState !== 'loading' && !document.documentElement.doScroll)) {
+      loadDashboard();
+    } else {
+      document.addEventListener('DOMContentLoaded', loadDashboard);
+    }
 });
 ```
 
@@ -6679,26 +3337,14 @@ document.addEventListener("DOMContentLoaded", function () {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}DynaDash{% endblock %}</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
-    <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    
-    <!-- DOMPurify -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.0/purify.min.js"></script>
-    
-    <!-- Main CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
     {% block head_scripts %}
-    {# Moved user_id injection here to ensure it's defined before common.js runs #}
     {% if current_user.is_authenticated %}
     <script>
         window.dynadash_current_user_id = {{ current_user.id | tojson }};
@@ -6713,15 +3359,7 @@ document.addEventListener("DOMContentLoaded", function () {
     {% block styles %}{% endblock %}
 </head>
 <body class="min-h-screen flex flex-col">
-    <!-- Navigation -->
-    <nav
-       class="
-         fixed top-0 left-0 w-full
-         text-white      
-         shadow-md z-50  
-         h-16            
-       "
-    >
+    <nav class="fixed top-0 left-0 w-full text-white shadow-md z-50 h-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex">
@@ -6732,51 +3370,55 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                 {% if current_user.is_authenticated %}
                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                    {# Check if request.endpoint is defined before using startswith #}
                     <a href="{{ url_for('visual.index') }}"
-                       class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('visual') %}border-b-2{% endif %}">
+                       class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('visual') %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                           Visualizations
                     </a>
-                    <a href="{{ url_for('data.index') if 'data.index' in current_app.view_functions else url_for('visual.index') }}"
-                      class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2{% endif %}">
+                    {# Use the new context function to check if data blueprint routes exist #}
+                    {% if data_blueprint_exists_and_has_route('index') %}
+                    <a href="{{ url_for('data.index') }}"
+                      class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                         Datasets 
                     </a>
-                    <a href="{{ url_for('data.upload') if 'data.upload' in current_app.view_functions else url_for('visual.index') }}"
-                        class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}border-b-2{% endif %}">
+                    {% endif %}
+                    {% if data_blueprint_exists_and_has_route('upload') %}
+                    <a href="{{ url_for('data.upload') }}"
+                        class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                          Upload   
                     </a>
-                   </div>
                     {% endif %}
+                   </div>
+                {% endif %}
                 </div>
                 <div class="hidden sm:ml-6 sm:flex sm:items-center">
                     {% if current_user.is_authenticated %}
                     <div class="ml-3 relative">
                         <div class="flex items-center">
-                            <span class="mr-2">{{ current_user.name }}</span>
+                            <span class="mr-2 text-text-color">{{ current_user.name }}</span>
                             <div class="relative">
-                                <button type="button" id="user-menu-button" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2">
+                                <button type="button" id="user-menu-button" class="flex text-sm rounded-full focus:outline-none">
                                     <span class="sr-only">Open user menu</span>
-                                    <div class="h-8 w-8 rounded-full flex items-center justify-center" style="background-color: var(--magenta-primary); color: var(--text-color);">
+                                    <div class="h-8 w-8 rounded-full flex items-center justify-center">
                                         {{ current_user.name[0] }}
                                     </div>
                                 </button>
                             </div>
-                            <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-xl z-50 py-1 focus:outline-none ring-1 ring-black ring-opacity-5" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Your Profile</a>
-                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Change Password</a>
-                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">Sign out</a>
+                            <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-48 rounded-md shadow-xl z-50 py-1 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm" role="menuitem">Your Profile</a>
+                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm" role="menuitem">Change Password</a>
+                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm" role="menuitem">Sign out</a>
                             </div>
                         </div>
                     </div>
                     {% else %}
                     <div class="flex space-x-4">
-                        <a href="{{ url_for('auth.login') }}" class="text-white px-3 py-2 rounded-md text-sm font-medium">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="px-3 py-2 rounded-md text-sm font-medium">Register</a>
+                        <a href="{{ url_for('auth.login') }}" class="px-3 py-2 rounded-md text-sm font-medium">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="bg-magenta-primary px-3 py-2 rounded-md text-sm font-medium">Register</a>
                     </div>
                     {% endif %}
                 </div>
                 <div class="-mr-2 flex items-center sm:hidden">
-                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md focus:outline-none">
                         <span class="sr-only">Open main menu</span>
                         <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -6787,47 +3429,51 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>
 
         <div id="mobile-menu" class="hidden sm:hidden">
-            <div class="pt-2 pb-3 space-y-1">
+            <div class="pt-2 pb-3 space-y-1 px-2">
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint and request.endpoint == 'visual.index' %}bg-highlight{% endif %} block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint and request.endpoint == 'visual.index' %}bg-highlight{% else %}{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Visualizations
                 </a>
-                <a href="{{ url_for('data.index') if 'data.index' in current_app.view_functions else url_for('visual.index') }}" class="block pl-3 pr-4 py-2 text-base font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}bg-highlight{% endif %}">
+                {% if data_blueprint_exists_and_has_route('index') %}
+                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}bg-highlight{% else %}{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Datasets
                 </a>
-                <a href="{{ url_for('data.upload') if 'data.upload' in current_app.view_functions else url_for('visual.index') }}" class="block pl-3 pr-4 py-2 text-base font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}bg-highlight{% endif%} ">
+                {% endif %}
+                {% if data_blueprint_exists_and_has_route('upload') %}
+                <a href="{{ url_for('data.upload') }}" class="{% if request.endpoint and request.endpoint == 'data.upload' %}bg-highlight{% else %}{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Upload
                 </a>
+                {% endif %}
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Login
                 </a>
-                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium">
+                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Register
                 </a>
                 {% endif %}
             </div>
             {% if current_user.is_authenticated %}
-            <div class="pt-4 pb-3 border-t border-1">
+            <div class="pt-4 pb-3 border-t">
                 <div class="flex items-center px-4">
                     <div class="flex-shrink-0">
-                        <div class="h-10 w-10 rounded-full flex items-center justify-center" style="background-color: var(--magenta-primary); color: var(--text-color);">
+                        <div class="h-10 w-10 rounded-full flex items-center justify-center">
                             {{ current_user.name[0] }}
                         </div>
                     </div>
                     <div class="ml-3">
-                        <div class="text-base font-medium">{{ current_user.name }}</div>
-                        <div class="text-sm font-medium" style="color: var(--text-secondary);">{{ current_user.email }}</div>
+                        <div class="text-base font-medium text-text-color">{{ current_user.name }}</div>
+                        <div class="text-sm font-medium text-text-secondary">{{ current_user.email }}</div>
                     </div>
                 </div>
-                <div class="mt-3 space-y-1">
-                    <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-base font-medium">
+                <div class="mt-3 space-y-1 px-2">
+                    <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-base font-medium rounded-md">
                         Your Profile
                     </a>
-                    <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-base font-medium">
+                    <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-base font-medium rounded-md">
                         Change Password
                     </a>
-                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-base font-medium">
+                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-base font-medium rounded-md">
                         Sign out
                     </a>
                 </div>
@@ -6841,7 +3487,7 @@ document.addEventListener("DOMContentLoaded", function () {
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="flash-message flash-{{ category }}">
-                        {{ message }}
+                        <span>{{ message }}</span>
                         <button type="button" class="close-flash ml-2">×</button>
                     </div>
                 {% endfor %}
@@ -6855,9 +3501,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     <footer class="py-4 mt-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center">
-                <div class="text-sm">
-                    © 2025 DynaDash. All rights reserved.
+            <div class="flex flex-col sm:flex-row justify-between items-center text-center sm:text-left">
+                <div class="text-sm mb-2 sm:mb-0">
+                    © {% block current_year %}2025{% endblock %} DynaDash. All rights reserved.
                 </div>
                 <div class="text-sm">
                     Created by Matthew Haskins, Leo Chen, Jonas Liu, Ziyue Xu
@@ -6871,6 +3517,7 @@ document.addEventListener("DOMContentLoaded", function () {
     {% block scripts %}{% endblock %}
 </body>
 </html>
+
 ```
 
 
@@ -6882,11 +3529,11 @@ document.addEventListener("DOMContentLoaded", function () {
 {% block title %}Error {{ error_code }} - DynaDash{% endblock %}
 
 {% block content %}
-<div class="flex flex-col items-center justify-center py-16">
-    <div class="text-red-500 text-6xl font-bold mb-4">{{ error_code }}</div>
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ error_message }}</h1>
+<div class="flex flex-col items-center justify-center py-16 px-4">
+    <div class="text-6xl font-bold mb-4 text-danger">{{ error_code }}</div>
+    <h1 class="text-3xl font-bold mb-6 text-center">{{ error_message }}</h1>
     
-    <p class="text-gray-600 mb-8 text-center max-w-lg">
+    <p class="mb-8 text-center max-w-lg">
         {% if error_code == 404 %}
         The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
         {% elif error_code == 403 %}
@@ -6898,11 +3545,11 @@ document.addEventListener("DOMContentLoaded", function () {
         {% endif %}
     </p>
     
-    <div class="flex space-x-4">
-        <a href="{{ url_for('visual.index') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+        <a href="{{ url_for('visual.index') if current_user.is_authenticated else url_for('visual.welcome') }}" class="btn w-full sm:w-auto">
             Go to Home
         </a>
-        <button onclick="window.history.back()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">
+        <button onclick="window.history.back()" class="btn btn-secondary w-full sm:w-auto">
             Go Back
         </button>
     </div>
@@ -6918,55 +3565,62 @@ document.addEventListener("DOMContentLoaded", function () {
 
 {% block title %}DynaDash - Dynamic Data Analytics{% endblock %}
 
+{% block head_scripts %}
+    {{ super() }}
+    <!-- Font Awesome for icons (moved from bottom to ensure it's loaded before body) -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous" defer></script>
+{% endblock %}
+
+
 {% block content %}
-<div class="flex flex-col items-center justify-center py-12">
-    <h1 class="text-4xl font-bold text-blue-600 mb-6">Welcome to DynaDash</h1>
-    <p class="text-xl text-gray-700 mb-8 text-center max-w-3xl">
+<div class="flex flex-col items-center justify-center py-12 px-4">
+    <h1 class="text-5xl font-bold mb-6 text-center">Welcome to DynaDash</h1>
+    <p class="text-xl lead mb-8 text-center max-w-3xl">
         A web-based data-analytics platform that lets you upload datasets, 
         receive automated visualizations powered by Claude AI, and share insights with your team.
     </p>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl mb-12">
         <!-- Feature 1 -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <div class="text-blue-500 text-4xl mb-4">
+        <div class="bg-white p-6 rounded-lg">
+            <div class="text-magenta-primary text-4xl mb-4">
                 <i class="fas fa-upload"></i>
             </div>
             <h3 class="text-xl font-semibold mb-2">Upload Datasets</h3>
-            <p class="text-gray-600">
+            <p>
                 Securely upload your CSV or JSON datasets and preview them instantly.
             </p>
         </div>
         
         <!-- Feature 2 -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <div class="text-blue-500 text-4xl mb-4">
+        <div class="bg-white p-6 rounded-lg">
+            <div class="text-magenta-primary text-4xl mb-4">
                 <i class="fas fa-chart-bar"></i>
             </div>
             <h3 class="text-xl font-semibold mb-2">AI-Powered Visualizations</h3>
-            <p class="text-gray-600">
+            <p>
                 Get automated exploratory analyses & visualizations generated by Claude AI.
             </p>
         </div>
         
         <!-- Feature 3 -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <div class="text-blue-500 text-4xl mb-4">
+        <div class="bg-white p-6 rounded-lg">
+            <div class="text-magenta-primary text-4xl mb-4">
                 <i class="fas fa-cubes"></i>
             </div>
             <h3 class="text-xl font-semibold mb-2">Manage Your Gallery</h3>
-            <p class="text-gray-600">
+            <p>
                 Curate, annotate & manage visualizations in your personal gallery.
             </p>
         </div>
         
         <!-- Feature 4 -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <div class="text-blue-500 text-4xl mb-4">
+        <div class="bg-white p-6 rounded-lg">
+            <div class="text-magenta-primary text-4xl mb-4">
                 <i class="fas fa-share-alt"></i>
             </div>
             <h3 class="text-xl font-semibold mb-2">Share Insights</h3>
-            <p class="text-gray-600">
+            <p>
                 Selectively share chosen datasets or charts with nominated peers.
             </p>
         </div>
@@ -6974,19 +3628,19 @@ document.addEventListener("DOMContentLoaded", function () {
     
     {% if not current_user.is_authenticated %}
     <div class="flex flex-col md:flex-row gap-6">
-        <a href="{{ url_for('auth.register') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+        <a href="{{ url_for('auth.register') }}" class="btn">
             Register Now
         </a>
-        <a href="{{ url_for('auth.login') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition duration-300">
+        <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">
             Login
         </a>
     </div>
     {% else %}
     <div class="flex flex-col md:flex-row gap-6">
-        <a href="{{ url_for('data.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+        <a href="{{ url_for('data.upload') }}" class="btn">
             Upload Dataset
         </a>
-        <a href="{{ url_for('visual.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition duration-300">
+        <a href="{{ url_for('visual.index') }}" class="btn btn-secondary">
             View Visualizations
         </a>
     </div>
@@ -6994,28 +3648,27 @@ document.addEventListener("DOMContentLoaded", function () {
 </div>
 
 <!-- How It Works Section -->
-<div class="bg-gray-50 py-16">
+<div class="bg-gray-50 py-16"> {# This bg-gray-50 will be themed by main.css #}
     <div class="container mx-auto px-4">
         <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
         
         <div class="flex flex-col md:flex-row justify-between items-center mb-16">
             <div class="md:w-1/2 mb-8 md:mb-0 md:pr-8">
                 <h3 class="text-2xl font-semibold mb-4">1. Upload Your Data</h3>
-                <p class="text-gray-600 mb-4">
+                <p class="mb-4">
                     Upload your CSV or JSON datasets securely to the platform. 
                     Our system validates your data and provides an instant preview.
                 </p>
-                <ul class="list-disc list-inside text-gray-600">
+                <ul class="list-disc list-inside">
                     <li>Support for CSV and JSON formats</li>
                     <li>Secure file handling</li>
                     <li>Instant data preview</li>
                 </ul>
             </div>
             <div class="md:w-1/2">
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <!-- Placeholder for an image or illustration -->
-                    <div class="bg-gray-200 h-64 rounded flex items-center justify-center">
-                        <span class="text-gray-500">Upload Interface</span>
+                <div class="bg-white p-4 rounded-lg"> {# Card style from main.css #}
+                    <div class="bg-surface-1 h-64 rounded flex items-center justify-center"> {# Utility class for themed background #}
+                        <span class="text-text-secondary">Upload Interface Mockup</span>
                     </div>
                 </div>
             </div>
@@ -7024,21 +3677,20 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="flex flex-col md:flex-row justify-between items-center mb-16">
             <div class="md:w-1/2 md:order-2 mb-8 md:mb-0 md:pl-8">
                 <h3 class="text-2xl font-semibold mb-4">2. Generate Visualizations</h3>
-                <p class="text-gray-600 mb-4">
+                <p class="mb-4">
                     Our AI-powered system analyzes your data and generates meaningful visualizations 
                     automatically using Anthropic's Claude API.
                 </p>
-                <ul class="list-disc list-inside text-gray-600">
+                <ul class="list-disc list-inside">
                     <li>AI-powered data analysis</li>
                     <li>Multiple chart types</li>
                     <li>Real-time progress tracking</li>
                 </ul>
             </div>
             <div class="md:w-1/2 md:order-1">
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <!-- Placeholder for an image or illustration -->
-                    <div class="bg-gray-200 h-64 rounded flex items-center justify-center">
-                        <span class="text-gray-500">Visualization Process</span>
+                <div class="bg-white p-4 rounded-lg"> {# Card style from main.css #}
+                    <div class="bg-surface-1 h-64 rounded flex items-center justify-center"> {# Utility class for themed background #}
+                        <span class="text-text-secondary">Visualization Process Mockup</span>
                     </div>
                 </div>
             </div>
@@ -7047,21 +3699,20 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="flex flex-col md:flex-row justify-between items-center">
             <div class="md:w-1/2 mb-8 md:mb-0 md:pr-8">
                 <h3 class="text-2xl font-semibold mb-4">3. Share and Collaborate</h3>
-                <p class="text-gray-600 mb-4">
+                <p class="mb-4">
                     Curate your visualizations in a personal gallery and selectively share them 
                     with team members for collaboration.
                 </p>
-                <ul class="list-disc list-inside text-gray-600">
+                <ul class="list-disc list-inside">
                     <li>Fine-grained access control</li>
                     <li>Personal visualization gallery</li>
                     <li>Team collaboration features</li>
                 </ul>
             </div>
             <div class="md:w-1/2">
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <!-- Placeholder for an image or illustration -->
-                    <div class="bg-gray-200 h-64 rounded flex items-center justify-center">
-                        <span class="text-gray-500">Sharing Interface</span>
+                <div class="bg-white p-4 rounded-lg"> {# Card style from main.css #}
+                    <div class="bg-surface-1 h-64 rounded flex items-center justify-center"> {# Utility class for themed background #}
+                        <span class="text-text-secondary">Sharing Interface Mockup</span>
                     </div>
                 </div>
             </div>
@@ -7071,8 +3722,8 @@ document.addEventListener("DOMContentLoaded", function () {
 {% endblock %}
 
 {% block scripts %}
-<!-- Font Awesome for icons -->
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+{{ super() }}
+{# Font Awesome script already moved to head_scripts for better practice #}
 {% endblock %}
 ```
 
@@ -7096,22 +3747,26 @@ document.addEventListener("DOMContentLoaded", function () {
 <div class="py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Generate Dashboard</h1>
-            {# Ensure data.view exists or provide a fallback #}
+            <h1 class="text-3xl font-bold text-text-color">Generate Dashboard</h1>
+            {# Ensure data.view exists or provide a fallback. text-blue-600 is themed to magenta by main.css #}
             <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else url_for('visual.index') }}" class="text-blue-600 hover:text-blue-800">
                 <i class="fas fa-arrow-left mr-1"></i> Back to Dataset
             </a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Dataset Info -->
+            <!-- Dataset Info Card -->
             <div class="md:col-span-1">
+                {# .bg-white is themed to var(--card-bg) by main.css #}
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                    {# .border-gray-200 is themed to var(--border-color) by main.css #}
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Dataset Details</h2>
+                        <h2 class="text-lg font-semibold text-text-color">Dataset Details</h2>
                     </div>
                     <div class="p-4">
-                        <h3 class="font-medium text-gray-200 mb-1">{{ dataset.original_filename }}</h3>
+                        {# Changed text-gray-200 to text-text-color for better theme alignment #}
+                        <h3 class="font-medium text-text-color mb-1">{{ dataset.original_filename }}</h3>
+                        {# .text-gray-500 is themed to var(--text-secondary) by main.css #}
                         <p class="text-sm text-gray-500 mb-4">
                             {{ dataset.file_type.upper() }} • {{ dataset.n_rows }} rows • {{ dataset.n_columns }} columns
                         </p>
@@ -7120,7 +3775,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         </p>
                         <p class="text-sm text-gray-500">
                             <span class="font-medium">Visibility:</span> 
-                            <span class="{{ 'text-green-600' if dataset.is_public else 'text-gray-800' }}">
+                            {# text-green-600 for public status is fine, uses --accent-green via Tailwind #}
+                            <span class="{{ 'text-green-600' if dataset.is_public else 'text-text-color' }}">
                                 {{ 'Public' if dataset.is_public else 'Private' }}
                             </span>
                         </p>
@@ -7128,24 +3784,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
             </div>
             
-            <!-- Dashboard Form -->
+            <!-- Dashboard Form Card -->
             <div class="md:col-span-2">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Dashboard Options</h2>
+                        <h2 class="text-lg font-semibold text-text-color">Dashboard Options</h2>
                     </div>
                     <div class="p-4">
                         <form method="POST" action="{{ url_for('visual.generate', dataset_id=dataset.id) }}" id="dashboard-form">
                             {{ form.hidden_tag() }}
                             
                             <div class="mb-4">
-                                <label for="title" class="block text-sm font-medium text-gray-700">
-                                    {{ form.title.label }}
-                                </label>
+                                {# Rely on main.css for label styling; remove Tailwind classes #}
+                                {{ form.title.label }}
                                 <div class="mt-1">
-                                    {{ form.title(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md") }}
+                                    {# Rely on main.css for input styling; remove most Tailwind classes. Keep w-full if needed. #}
+                                    {{ form.title(class="w-full", placeholder="Enter a title for your dashboard") }}
                                     {% if form.title.errors %}
-                                        <div class="text-red-500 text-xs mt-1">
+                                        {# .text-red-500 is themed to var(--danger-light). Add invalid-feedback for potential icon/enhanced styling. #}
+                                        <div class="invalid-feedback text-xs mt-1">
                                             {% for error in form.title.errors %}
                                                 <span>{{ error }}</span>
                                             {% endfor %}
@@ -7155,13 +3812,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             </div>
                             
                             <div class="mb-4">
-                                <label for="description" class="block text-sm font-medium text-gray-700">
-                                    {{ form.description.label }}
-                                </label>
+                                {{ form.description.label }}
                                 <div class="mt-1">
-                                    {{ form.description(class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md", rows=3, placeholder="Describe what insights you're looking for or what aspects of the data you want to highlight...") }}
+                                    {{ form.description(class="w-full", rows=3, placeholder="Describe what insights you're looking for or what aspects of the data you want to highlight...") }}
                                     {% if form.description.errors %}
-                                        <div class="text-red-500 text-xs mt-1">
+                                        <div class="invalid-feedback text-xs mt-1">
                                             {% for error in form.description.errors %}
                                                 <span>{{ error }}</span>
                                             {% endfor %}
@@ -7174,15 +3829,17 @@ document.addEventListener("DOMContentLoaded", function () {
                             </div>
                             
                             <div class="mb-6">
-                                <div class="bg-blue-50 border border-blue-200 rounded p-3">
-                                    <span class="text-blue-800 text-sm">
+                                {# Use .alert .alert-info for the note box #}
+                                <div class="alert alert-info">
+                                    <span class="text-sm"> {# main.css alert styles will handle text color #}
                                         <strong>Note:</strong> Claude will analyze your dataset and automatically create a fully interactive dashboard with multiple visualizations. This process may take up to 60-90 seconds for larger datasets.
                                     </span>
                                 </div>
                             </div>
                             
                             <div class="flex justify-end">
-                                {{ form.submit(class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500", value="Generate Dashboard", id="submit-button") }}
+                                {# Use .btn class for the submit button #}
+                                {{ form.submit(class="btn", value="Generate Dashboard", id="submit-button") }}
                             </div>
                         </form>
                     </div>
@@ -7192,9 +3849,11 @@ document.addEventListener("DOMContentLoaded", function () {
         
         <!-- Processing Modal -->
         <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+            {# Modal content uses CSS variables from main.css, which is good #}
             <div class="bg-card-bg rounded-lg shadow-lg p-6 max-w-md w-full border border-border-color">
                 <h3 class="text-xl font-bold text-text-color mb-4">Generating Dashboard</h3>
                 <div class="mb-4">
+                    {# progress-container and #progress-bar are styled by main.css #}
                     <div class="progress-container">
                         <div id="progress-bar" style="width: 0%"></div>
                     </div>
@@ -7202,6 +3861,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
                 <div class="text-text-secondary text-sm">
                     <p class="mb-2">Claude is analyzing your data and creating a custom dashboard. This may take 60-90 seconds to complete.</p>
+                    {# steps-container and step-indicator are styled by main.css #}
                     <div id="steps-container" class="border border-border-color rounded p-2 mt-3">
                         <p class="text-xs text-text-tertiary mb-1">Current progress:</p>
                         <ul class="text-xs space-y-1">
@@ -7228,7 +3888,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         </ul>
                     </div>
                 </div>
-                <div id="error-message-modal" class="mt-4 p-3 bg-red-100 border border-red-300 rounded text-red-700 text-sm hidden">
+                {# Use .alert .alert-danger for modal error message #}
+                <div id="error-message-modal" class="mt-4 alert alert-danger error-message hidden">
                     An error occurred. Please try again or contact support if the problem persists.
                 </div>
             </div>
@@ -7263,15 +3924,31 @@ document.addEventListener("DOMContentLoaded", function () {
             const indicatorEl = document.getElementById(step.indicator);
             const textEl = document.getElementById(step.text_el_id);
             if (indicatorEl && textEl) {
+                // Add 'step-active' for the current step based on percentage range
+                let isActive = false;
+                if (stepNum < Object.keys(steps).length) {
+                     const nextStepPercent = steps[parseInt(stepNum) + 1] ? steps[parseInt(stepNum) + 1].percent : 100;
+                     isActive = currentPercent >= step.percent && currentPercent < nextStepPercent;
+                } else { // Last step
+                     isActive = currentPercent >= step.percent;
+                }
+
                 if (currentPercent >= step.percent) {
-                    indicatorEl.classList.remove('bg-gray-300');
-                    indicatorEl.classList.add('step-completed'); // Or 'step-active' if it's the current one
+                    indicatorEl.classList.remove('bg-gray-300'); // remove explicit tailwind class if present
+                    indicatorEl.classList.add('step-completed');
                     textEl.classList.remove('text-text-tertiary');
-                    textEl.classList.add('text-text-color');
+                    textEl.classList.add('text-text-color'); // Or specific class for completed text
+                    if (isActive) {
+                        indicatorEl.classList.add('step-active');
+                        textEl.classList.add('active'); // Assuming .active is styled in CSS
+                    } else {
+                         indicatorEl.classList.remove('step-active');
+                         textEl.classList.remove('active');
+                    }
                 } else {
                      indicatorEl.classList.remove('step-completed', 'step-active');
-                     indicatorEl.classList.add('bg-gray-300');
-                     textEl.classList.remove('text-text-color');
+                     // indicatorEl.classList.add('bg-gray-300'); // Not needed if default is styled by main.css
+                     textEl.classList.remove('text-text-color', 'active');
                      textEl.classList.add('text-text-tertiary');
                 }
             }
@@ -7281,55 +3958,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (dashboardForm && processingModal && progressBar && progressLabel) {
         dashboardForm.addEventListener('submit', function(event) {
-            // Client-side validation can be added here if needed before showing modal
             processingModal.classList.remove('hidden');
             progressBar.style.width = '0%';
             progressLabel.textContent = 'Initializing...';
-            if(errorMessageModal) errorMessageModal.classList.add('hidden'); // Clear previous errors
-            updateStepIndicator(0); // Reset step indicators
-
-            // SocketIO event listeners are now in common.js
-            // This script just needs to trigger the submission
+            if(errorMessageModal) {
+                 errorMessageModal.classList.add('hidden');
+                 // Clear previous text if any, main.css might use :before for icon
+                 errorMessageModal.textContent = 'An error occurred. Please try again or contact support if the problem persists.';
+            }
+            updateStepIndicator(0); 
         });
     }
-
-    // This part will be handled by common.js now
-    // const socket = io(); // Assuming common.js initializes socket if user is authenticated
-    // if (typeof socket !== 'undefined') { // Check if socket was initialized
-    //     socket.on('progress_update', function(data) {
-    //         if (progressBar && progressLabel) {
-    //             progressBar.style.width = data.percent + '%';
-    //             progressLabel.textContent = data.message;
-    //             updateStepIndicator(data.percent);
-    //         }
-    //     });
-
-    //     socket.on('processing_complete', function(data) {
-    //         if (progressBar && progressLabel) {
-    //             progressBar.style.width = '100%';
-    //             progressLabel.textContent = 'Dashboard completed! Redirecting...';
-    //             updateStepIndicator(100);
-    //         }
-    //         if (data && data.redirect_url) {
-    //             window.location.href = data.redirect_url;
-    //         } else {
-    //             // Fallback if no redirect URL is provided
-    //             setTimeout(() => { processingModal.classList.add('hidden'); }, 2000);
-    //         }
-    //     });
-
-    //     socket.on('processing_error', function(data) {
-    //         if (processingModal && errorMessageModal && progressLabel) {
-    //             progressLabel.textContent = 'Error occurred.';
-    //             errorMessageModal.textContent = 'Error: ' + data.message;
-    //             errorMessageModal.classList.remove('hidden');
-    //             // Optionally hide modal after a delay or provide a close button
-    //             // setTimeout(() => { processingModal.classList.add('hidden'); }, 5000);
-    //         } else {
-    //             alert('Error: ' + data.message); // Fallback
-    //         }
-    //     });
-    // }
 });
 </script>
 {% endblock %}
@@ -7344,6 +3983,113 @@ document.addEventListener("DOMContentLoaded", function () {
 {% block title %}My Visualizations - DynaDash{% endblock %}
 
 {% block content %}
+{# This page is currently minimal. If content is added, ensure it uses themed styles. #}
+{# For example, a list of visualizations would use themed cards. #}
+<div class="py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-text-color">My Dashboards</h1>
+            {# Example button to create new dashboard, linking to upload or a generation page #}
+            <a href="{{ url_for('data.upload') }}" class="btn">
+                <i class="fas fa-plus mr-2"></i> Create New Dashboard
+            </a>
+        </div>
+
+        {% if visualisations and visualisations.items %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for vis in visualisations.items %}
+                    <div class="bg-card-bg shadow-md rounded-lg overflow-hidden border border-border-color flex flex-col">
+                        <div class="p-4 border-b border-border-color">
+                            <h2 class="text-lg font-semibold text-text-color truncate" title="{{ vis.title }}">{{ vis.title }}</h2>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            {% if vis.description %}
+                                <p class="text-sm text-text-secondary mb-3 h-16 overflow-hidden text-ellipsis">{{ vis.description }}</p>
+                            {% else %}
+                                <p class="text-sm text-text-tertiary mb-3 h-16 italic">No description provided.</p>
+                            {% endif %}
+                            <p class="text-xs text-text-tertiary">
+                                Dataset: <span class="font-medium text-text-secondary">{{ vis.dataset.original_filename }}</span>
+                            </p>
+                            <p class="text-xs text-text-tertiary">
+                                Created: <span class="font-medium text-text-secondary">{{ vis.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                            </p>
+                        </div>
+                        <div class="p-4 bg-surface-1 border-t border-border-color flex justify-end space-x-2">
+                            <a href="{{ url_for('visual.view', id=vis.id) }}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-eye mr-1"></i> View
+                            </a>
+                             {% if vis.dataset.user_id == current_user.id %}
+                            <a href="{{ url_for('visual.share', id=vis.id) }}" class="btn btn-accent-green btn-sm">
+                                <i class="fas fa-share-alt mr-1"></i> Share
+                            </a>
+                            <form action="{{ url_for('visual.delete', id=vis.id) }}" method="POST" class="inline m-0" onsubmit="return confirm('Are you sure you want to delete this dashboard?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash-alt mr-1"></i> Delete
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            {# Pagination #}
+            {% if visualisations.has_prev or visualisations.has_next %}
+            <div class="mt-8 flex justify-center">
+                <nav aria-label="Pagination">
+                    <ul class="inline-flex items-center -space-x-px shadow-sm">
+                        {% if visualisations.has_prev %}
+                        <li>
+                            <a href="{{ url_for('visual.index', page=visualisations.prev_num) }}" class="btn btn-secondary btn-sm rounded-r-none">
+                                <i class="fas fa-chevron-left mr-1"></i> Previous
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% for page_num in visualisations.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                {% if visualisations.page == page_num %}
+                                <li>
+                                    <a href="#" class="btn btn-sm rounded-none" aria-current="page">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <a href="{{ url_for('visual.index', page=page_num) }}" class="btn btn-secondary btn-sm rounded-none">{{ page_num }}</a>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                                <li><span class="btn btn-secondary btn-sm rounded-none disabled">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if visualisations.has_next %}
+                        <li>
+                            <a href="{{ url_for('visual.index', page=visualisations.next_num) }}" class="btn btn-secondary btn-sm rounded-l-none">
+                                Next <i class="fas fa-chevron-right ml-1"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+        {% else %}
+            <div class="bg-card-bg border border-border-color rounded-lg p-12 text-center">
+                <div class="text-text-tertiary text-5xl mb-4">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h2 class="text-2xl font-semibold text-text-color mb-3">No Dashboards Yet</h2>
+                <p class="text-text-secondary mb-6">
+                    It looks like you haven't created or been shared any dashboards.
+                </p>
+                <a href="{{ url_for('data.upload') }}" class="btn">
+                    <i class="fas fa-plus mr-2"></i> Create Your First Dashboard
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
 <script src="{{ url_for('static', filename='js/visual.js') }}"></script>
 {% endblock %}
 ```
@@ -7358,23 +4104,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
 {% block content %}
 <div class="py-8">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Share Visualization</h1>
+            <h1 class="text-3xl font-bold text-text-color">Share Visualization</h1>
+            {# text-blue-600 is themed to magenta by main.css #}
             <a href="{{ url_for('visual.view', id=visualisation.id) }}" class="text-blue-600 hover:text-blue-800">
                 <i class="fas fa-arrow-left mr-1"></i> Back to Visualization
             </a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Visualization Info -->
+            <!-- Visualization Info Card -->
             <div class="md:col-span-1">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Visualization Details</h2>
+                        <h2 class="text-lg font-semibold text-text-color">Visualization Details</h2>
                     </div>
                     <div class="p-4">
-                        <h3 class="font-medium text-gray-200 mb-1">{{ visualisation.title }}</h3>
+                        {# Changed text-gray-200 to text-text-color #}
+                        <h3 class="font-medium text-text-color mb-1">{{ visualisation.title }}</h3>
                         {% if visualisation.description %}
                             <p class="text-sm text-gray-500 mb-4">{{ visualisation.description }}</p>
                         {% endif %}
@@ -7385,53 +4133,59 @@ document.addEventListener("DOMContentLoaded", function () {
                             <span class="font-medium">Dataset:</span> {{ dataset.original_filename }}
                         </p>
                         
-                        <div class="mt-4 p-2 bg-gray-50 rounded">
+                        <div class="mt-4 p-2 bg-surface-1 rounded"> {# Changed bg-gray-50 to bg-surface-1 #}
                             <div class="text-xs text-gray-500 mb-1">Preview:</div>
-                            <div class="h-32 flex items-center justify-center bg-gray-100 rounded">
-                                <span class="text-gray-400 text-sm">Visualization Preview</span>
+                            {# Changed bg-gray-100 to bg-surface-2 #}
+                            <div class="h-32 flex items-center justify-center bg-surface-2 rounded">
+                                <span class="text-text-tertiary text-sm">Visualization Preview</span> {# text-gray-400 themed to text-secondary, text-tertiary might be better #}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Share Form -->
+            <!-- Share Form Card -->
             <div class="md:col-span-2">
                 <div class="bg-white shadow-md rounded-lg overflow-hidden">
                     <div class="p-4 border-b border-gray-200">
-                        <h2 class="text-lg font-semibold text-gray-800">Share with Users</h2>
+                        <h2 class="text-lg font-semibold text-text-color">Share with Users</h2>
                     </div>
                     <div class="p-4">
                         <form method="POST" action="{{ url_for('visual.share', id=visualisation.id) }}">
                             {{ form.hidden_tag() }}
                             
                             <div class="mb-6">
-                                <label for="user_id" class="block text-gray-700 text-sm font-bold mb-2">
-                                    {{ form.user_id.label }}
-                                </label>
-                                {{ form.user_id(class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline") }}
-                                {% if form.user_id.errors %}
-                                    <div class="text-red-500 text-xs mt-1">
-                                        {% for error in form.user_id.errors %}
-                                            <span>{{ error }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+                                {# Rely on main.css for label styling #}
+                                {{ form.user_id.label }}
+                                <div class="mt-1">
+                                    {# Rely on main.css for select styling #}
+                                    {{ form.user_id(class="w-full") }}
+                                    {% if form.user_id.errors %}
+                                        <div class="invalid-feedback text-xs mt-1">
+                                            {% for error in form.user_id.errors %}
+                                                <span>{{ error }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
                             
                             <div class="flex justify-end">
-                                {{ form.submit(class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300") }}
+                                {# Use .btn class for submit #}
+                                {{ form.submit(class="btn") }}
                             </div>
                         </form>
                         
                         <div class="mt-8">
-                            <h3 class="text-lg font-medium text-gray-700 mb-4">Currently Shared With</h3>
+                            <h3 class="text-lg font-medium text-text-color mb-4">Currently Shared With</h3>
                             
                             {% if shared_with %}
-                                <div class="bg-white border rounded-lg overflow-hidden">
-                                    <table class="min-w-full divide-y divide-gray-200">
-                                        <thead class="bg-gray-50">
+                                {# Table styling will be largely handled by main.css `table` selector #}
+                                <div class="overflow-x-auto"> {# Wrapper for responsiveness #}
+                                    <table class="min-w-full">
+                                        <thead> {# Removed bg-gray-50, main.css table th has bg #}
                                             <tr>
+                                                {# text-gray-500 themed to text-secondary #}
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     User
                                                 </th>
@@ -7440,27 +4194,30 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody class="bg-white divide-y divide-gray-200">
-                                            {% for user in shared_with %}
+                                        <tbody> {# Removed bg-white and divide-y, main.css table handles this #}
+                                            {% for user_share in shared_with %} {# Assuming shared_with is a list of User objects or similar #}
                                                 <tr>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="flex items-center">
-                                                            <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                                                <span class="text-gray-500">{{ user.name[0] }}</span>
+                                                            {# Changed bg-gray-200 to bg-surface-3 for avatar placeholder #}
+                                                            <div class="flex-shrink-0 h-10 w-10 bg-surface-3 rounded-full flex items-center justify-center">
+                                                                <span class="text-text-color">{{ user_share.name[0] }}</span>
                                                             </div>
                                                             <div class="ml-4">
+                                                                {# text-gray-900 themed to text-text-color #}
                                                                 <div class="text-sm font-medium text-gray-900">
-                                                                    {{ user.name }}
+                                                                    {{ user_share.name }}
                                                                 </div>
                                                                 <div class="text-sm text-gray-500">
-                                                                    {{ user.email }}
+                                                                    {{ user_share.email }}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                        <form action="{{ url_for('visual.unshare', id=visualisation.id, user_id=user.id) }}" method="POST" class="inline">
-                                                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                                        {# text-red-600 themed to var(--danger). text-danger provided by main.css for links. #}
+                                                        <form action="{{ url_for('visual.unshare', id=visualisation.id, user_id=user_share.id) }}" method="POST" class="inline">
+                                                            <button type="submit" class="text-danger hover:text-danger-dark">
                                                                 Remove
                                                             </button>
                                                         </form>
@@ -7471,10 +4228,12 @@ document.addEventListener("DOMContentLoaded", function () {
                                     </table>
                                 </div>
                             {% else %}
-                                <div class="bg-gray-50 rounded-lg p-6 text-center">
-                                    <div class="text-gray-400 text-4xl mb-3">
+                                {# Changed bg-gray-50 to bg-surface-1 #}
+                                <div class="bg-surface-1 rounded-lg p-6 text-center">
+                                    <div class="text-text-tertiary text-4xl mb-3"> {# text-gray-400 themed to text-secondary, text-tertiary for icon #}
                                         <i class="fas fa-users-slash"></i>
                                     </div>
+                                    {# text-gray-600 themed to text-secondary #}
                                     <p class="text-gray-600">
                                         This visualization is not shared with anyone yet.
                                     </p>
@@ -7484,9 +4243,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                 </div>
                 
-                <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-blue-800 mb-2">Sharing Information</h3>
-                    <ul class="list-disc list-inside text-blue-700 space-y-1">
+                {# Use .alert .alert-info for the sharing information box #}
+                <div class="mt-6 alert alert-info">
+                    <h3 class="text-lg font-semibold mb-2">Sharing Information</h3> {# Alert styles will color this #}
+                    <ul class="list-disc list-inside space-y-1"> {# Alert styles will color this #}
                         <li>Shared users can view but not modify your visualization</li>
                         <li>You can revoke access at any time</li>
                         <li>Users will be notified when you share a visualization with them</li>
@@ -7500,7 +4260,8 @@ document.addEventListener("DOMContentLoaded", function () {
 {% endblock %}
 
 {% block scripts %}
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+{# FontAwesome is usually included in base.html, but if not, keep it. #}
+{# <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> #}
 <script src="{{ url_for('static', filename='js/visual.js') }}"></script>
 {% endblock %}
 ```
@@ -7516,25 +4277,21 @@ document.addEventListener("DOMContentLoaded", function () {
 {% block head_scripts %} {# Changed from 'head' to 'head_scripts' to match base.html #}
     {{ super() }}
     <style>
-        .dashboard-frame { width: 100%; height: 800px; min-height: 800px; border: none; background-color: white; }
+        .dashboard-frame { width: 100%; height: 800px; min-height: 800px; border: none; background-color: var(--card-bg); } /* Changed background to var(--card-bg) */
         .dashboard-frame canvas { max-width: 100%; }
         .dashboard-container { height: auto; min-height: 800px; position: relative; width: 100%; }
         .fullscreen-toggle { position: absolute; top: 10px; right: 10px; z-index: 100; padding: 5px 10px; background-color: rgba(0,0,0,0.5); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .fullscreen-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background-color: white; display: none; }
+        .fullscreen-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background-color: var(--card-bg); display: none; } /* Changed background */
         .fullscreen-container .dashboard-frame { height: 100%; width: 100%; }
         .fullscreen-container .fullscreen-toggle { top: 20px; right: 20px; }
-        .dashboard-error { padding: 20px; text-align: center; background-color: #fff3f3; border: 1px solid #ffcaca; border-radius: 8px; margin: 20px 0; }
-        .dashboard-error h3 { color: #e74c3c; margin-bottom: 10px; }
-        .dashboard-error p { margin-bottom: 15px; }
+        .dashboard-error { padding: 20px; text-align: center; background-color: rgba(var(--danger-rgb), 0.1); border: 1px solid var(--danger); border-radius: var(--radius-md); margin: 20px 0; } /* Themed error box */
+        .dashboard-error h3 { color: var(--danger); margin-bottom: 10px; }
+        .dashboard-error p { color: var(--text-secondary); margin-bottom: 15px; } /* Themed paragraph */
         .dashboard-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; }
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #3498db; animation: spin 1s ease infinite; margin-bottom: 15px; }
+        .spinner { border: 4px solid var(--surface-3); width: 40px; height: 40px; border-radius: 50%; border-left-color: var(--magenta-primary); animation: spin 1s ease infinite; margin-bottom: 15px; } /* Themed spinner */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .lg\:col-span-3 { width: 100%; }
-        /* Ensure no default margin/padding in iframe body */
-        /* These styles will be applied by prepare_dashboard_template_html if needed */
-        /* .dashboard-frame html, .dashboard-frame body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: auto; } */
     </style>
-    {# Inject actual dataset JSON into a global JS variable for the dashboard renderer #}
     <script>
         window.dynadashDatasetJson = {{ actual_dataset_json|safe }};
         window.dynadashDashboardTemplateHtml = {{ dashboard_template_html|tojson|safe }};
@@ -7544,27 +4301,28 @@ document.addEventListener("DOMContentLoaded", function () {
 {% block content %}
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4"> {# Added flex-wrap and gap for responsiveness #}
             <div>
                 <h1 class="text-3xl font-bold text-text-color">{{ visualisation.title }}</h1>
                 {% if visualisation.description %}
                     <p class="text-text-secondary mt-1">{{ visualisation.description }}</p>
                 {% endif %}
             </div>
-            <div class="flex space-x-3">
+            <div class="flex space-x-3 flex-wrap gap-2"> {# Added flex-wrap and gap for responsiveness #}
                 <a href="{{ url_for('visual.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Dashboards
                 </a>
                 
                 {% if dataset.user_id == current_user.id %}
-                    <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn bg-green-600 hover:bg-green-700">
+                    {# Assuming btn-success is green as per main.css themeing strategy #}
+                    <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn btn-success">
                         <i class="fas fa-share-alt mr-1"></i> Share
                     </a>
                     
-                    <form action="{{ url_for('visual.delete', id=visualisation.id) }}" method="POST" class="inline">
-                        {# CSRF token should be included if CSRFProtect is active for POSTs #}
+                    <form action="{{ url_for('visual.delete', id=visualisation.id) }}" method="POST" class="inline m-0">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn bg-red-600 hover:bg-red-700" 
+                        {# Assuming btn-danger is red #}
+                        <button type="submit" class="btn btn-danger" 
                                 onclick="return confirm('Are you sure you want to delete this dashboard? This action cannot be undone.');">
                             <i class="fas fa-trash-alt mr-1"></i> Delete
                         </button>
@@ -7575,6 +4333,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div class="lg:col-span-1">
+                {# Card uses direct CSS variables from main.css, which is good #}
                 <div class="bg-card-bg shadow-md rounded-lg overflow-hidden mb-6 border border-border-color">
                     <div class="p-4 border-b border-border-color">
                         <h2 class="text-lg font-semibold text-text-color">Dashboard Details</h2>
@@ -7587,6 +4346,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             </li>
                             <li class="flex justify-between">
                                 <span class="text-text-secondary">Dataset:</span>
+                                {# text-magenta-primary is good use of CSS var #}
                                 <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else '#' }}" class="font-medium text-magenta-primary hover:text-magenta-light">
                                     {{ dataset.original_filename }}
                                 </a>
@@ -7605,24 +4365,26 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                     <div class="p-4 space-y-3">
                         {% if dataset.user_id == current_user.id %}
-                            <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn bg-green-600 hover:bg-green-700 text-white w-full text-center">
+                            <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn btn-success w-full text-center">
                                 <i class="fas fa-share-alt mr-1"></i> Share Dashboard
                             </a>
                         {% endif %}
                         
-                        <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else '#' }}" class="btn bg-accent-blue hover:bg-accent-blue-dark text-white w-full text-center">
+                        {# Assuming btn-accent-blue, btn-accent-purple, btn-accent-cyan are defined or bg-accent-* classes work correctly with .btn #}
+                        <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else '#' }}" class="btn btn-accent-blue w-full text-center">
                             <i class="fas fa-database mr-1"></i> View Dataset
                         </a>
                         
-                        <button id="fullscreen-btn" class="btn bg-accent-purple hover:bg-accent-purple-dark text-white w-full text-center">
+                        <button id="fullscreen-btn" class="btn btn-accent-purple w-full text-center">
                             <i class="fas fa-expand mr-1"></i> Fullscreen Mode
                         </button>
                         
-                        <button id="download-btn-dashboard" class="btn bg-gray-500 hover:bg-gray-600 text-white w-full text-center">
+                        {# bg-gray-500 button changed to btn-secondary #}
+                        <button id="download-btn-dashboard" class="btn btn-secondary w-full text-center">
                             <i class="fas fa-download mr-1"></i> Download HTML
                         </button>
                         
-                        <button id="refresh-btn-dashboard" class="btn bg-accent-cyan hover:bg-accent-cyan-dark text-white w-full text-center">
+                        <button id="refresh-btn-dashboard" class="btn btn-accent-cyan w-full text-center">
                             <i class="fas fa-sync-alt mr-1"></i> Refresh Dashboard
                         </button>
                     </div>
@@ -7642,9 +4404,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         
                         <div id="dashboard-error" class="dashboard-error" style="display: none;">
                             <h3><i class="fas fa-exclamation-circle"></i> Dashboard Display Issue</h3>
-                            <p class="text-text-secondary">There was a problem displaying the dashboard. This may be due to browser security restrictions or a temporary issue.</p>
+                            <p>There was a problem displaying the dashboard. This may be due to browser security restrictions or a temporary issue.</p> {# Removed text-text-secondary as dashboard-error p handles color #}
                             <div>
-                                <button id="reload-dashboard-btn" class="btn bg-accent-blue hover:bg-accent-blue-dark text-white">
+                                <button id="reload-dashboard-btn" class="btn btn-accent-blue">
                                     <i class="fas fa-sync-alt mr-1"></i> Try Again
                                 </button>
                                 <a href="{{ url_for('visual.view', id=visualisation.id) }}" class="btn btn-secondary ml-2">
@@ -7669,14 +4431,10 @@ document.addEventListener("DOMContentLoaded", function () {
     <iframe id="fullscreen-frame" class="dashboard-frame" 
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"></iframe>
 </div>
-
-{# The dashboard_template_html and actual_dataset_json are now passed via <script> in head_scripts block #}
 {% endblock %}
 
 {% block scripts %}
-    {# Rename visual_generate.js to dashboard_renderer.js and include it here #}
     <script src="{{ url_for('static', filename='js/dashboard_renderer.js') }}" defer></script>
-    {# visual.js might still be needed for general visual page interactions if any remain #}
     <script src="{{ url_for('static', filename='js/visual.js') }}" defer></script> 
 {% endblock %}
 ```
@@ -7689,8 +4447,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 {% block content %}
 <div class="flex flex-col items-center justify-center min-h-screen text-center px-4 space-y-8 pt-12">
+    {# text-blue-600 is themed to magenta by main.css, including text-shadow effects #}
     <h1 class="text-5xl font-extrabold text-blue-600">Say Hello to DynaDash!</h1>
     
+    {# text-gray-700 is themed to text-secondary #}
     <p class="text-lg text-gray-700 max-w-3xl">
         Ever wished your data could tell its own story? With DynaDash, upload your private datasets and watch as Claude magically crafts eye-catching charts and insights. Curate your favourites, share them with friends, and explore data like never before—all in a flash!
     </p>
@@ -7704,17 +4464,19 @@ document.addEventListener("DOMContentLoaded", function () {
       { 'icon': '🤝', 'title': 'Share & Collaborate', 'desc': 'Pick datasets or charts and share with your crew.' },
       { 'icon': '📱', 'title': 'Fully Responsive',    'desc': 'Looks great on any device, thanks to Tailwind CSS.' }
     ] %}
+        {# .bg-white is themed to var(--card-bg) #}
+        {# Replaced Tailwind ring and drop-shadow with main.css themed shadow-glow on hover #}
         <div class="relative group
                     bg-white rounded-2xl 
                     transform hover:-translate-y-1
                     transition-transform duration-300 
-                    ring-0 hover:ring-4 hover:ring-pink-500/50
-                    ring-offset-2 ring-offset-gray-900 
-                    overflow-hidden
-                    filter hover:drop-shadow-[0_0_10px_rgba(236,72,153,0.6)]"
+                    ring-0 group-hover:shadow-glow-intense {# Use main.css glow #}
+                    ring-offset-2 ring-offset-gray-900 {# ring-offset might need adjustment with shadow glow #}
+                    overflow-hidden"
         >
             <div class="h-32 flex items-center justify-center">
-                <h2 class="text-2xl font-semibold group-hover:!text-pink-600 transition-colors duration-200">
+                 {# group-hover:!text-pink-600 changed to group-hover:text-magenta-primary for consistency #}
+                <h2 class="text-2xl font-semibold group-hover:text-magenta-primary transition-colors duration-200">
                   {{ feature.icon }} {{ feature.title }}
                 </h2>
             </div>
@@ -7726,7 +4488,8 @@ document.addEventListener("DOMContentLoaded", function () {
                        group-hover:delay-150
                        shadow-inner"
             >
-                <p class="text-gray-300">
+                {# text-gray-300 is a light gray, suitable on dark card. Corresponds to text-text-color-muted or lighter. #}
+                <p class="text-text-color-muted"> 
                    {{ feature.desc }}
                 </p>
             </div>
@@ -7735,5 +4498,4 @@ document.addEventListener("DOMContentLoaded", function () {
     </div>
 </div>
 {% endblock %}
-
 ```

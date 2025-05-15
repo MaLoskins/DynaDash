@@ -5,25 +5,21 @@
 {% block head_scripts %} {# Changed from 'head' to 'head_scripts' to match base.html #}
     {{ super() }}
     <style>
-        .dashboard-frame { width: 100%; height: 800px; min-height: 800px; border: none; background-color: white; }
+        .dashboard-frame { width: 100%; height: 800px; min-height: 800px; border: none; background-color: var(--card-bg); } /* Changed background to var(--card-bg) */
         .dashboard-frame canvas { max-width: 100%; }
         .dashboard-container { height: auto; min-height: 800px; position: relative; width: 100%; }
         .fullscreen-toggle { position: absolute; top: 10px; right: 10px; z-index: 100; padding: 5px 10px; background-color: rgba(0,0,0,0.5); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .fullscreen-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background-color: white; display: none; }
+        .fullscreen-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background-color: var(--card-bg); display: none; } /* Changed background */
         .fullscreen-container .dashboard-frame { height: 100%; width: 100%; }
         .fullscreen-container .fullscreen-toggle { top: 20px; right: 20px; }
-        .dashboard-error { padding: 20px; text-align: center; background-color: #fff3f3; border: 1px solid #ffcaca; border-radius: 8px; margin: 20px 0; }
-        .dashboard-error h3 { color: #e74c3c; margin-bottom: 10px; }
-        .dashboard-error p { margin-bottom: 15px; }
+        .dashboard-error { padding: 20px; text-align: center; background-color: rgba(var(--danger-rgb), 0.1); border: 1px solid var(--danger); border-radius: var(--radius-md); margin: 20px 0; } /* Themed error box */
+        .dashboard-error h3 { color: var(--danger); margin-bottom: 10px; }
+        .dashboard-error p { color: var(--text-secondary); margin-bottom: 15px; } /* Themed paragraph */
         .dashboard-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; }
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #3498db; animation: spin 1s ease infinite; margin-bottom: 15px; }
+        .spinner { border: 4px solid var(--surface-3); width: 40px; height: 40px; border-radius: 50%; border-left-color: var(--magenta-primary); animation: spin 1s ease infinite; margin-bottom: 15px; } /* Themed spinner */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .lg\:col-span-3 { width: 100%; }
-        /* Ensure no default margin/padding in iframe body */
-        /* These styles will be applied by prepare_dashboard_template_html if needed */
-        /* .dashboard-frame html, .dashboard-frame body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: auto; } */
     </style>
-    {# Inject actual dataset JSON into a global JS variable for the dashboard renderer #}
     <script>
         window.dynadashDatasetJson = {{ actual_dataset_json|safe }};
         window.dynadashDashboardTemplateHtml = {{ dashboard_template_html|tojson|safe }};
@@ -33,27 +29,28 @@
 {% block content %}
 <div class="py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4"> {# Added flex-wrap and gap for responsiveness #}
             <div>
                 <h1 class="text-3xl font-bold text-text-color">{{ visualisation.title }}</h1>
                 {% if visualisation.description %}
                     <p class="text-text-secondary mt-1">{{ visualisation.description }}</p>
                 {% endif %}
             </div>
-            <div class="flex space-x-3">
+            <div class="flex space-x-3 flex-wrap gap-2"> {# Added flex-wrap and gap for responsiveness #}
                 <a href="{{ url_for('visual.index') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left mr-1"></i> Back to Dashboards
                 </a>
                 
                 {% if dataset.user_id == current_user.id %}
-                    <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn bg-green-600 hover:bg-green-700">
+                    {# Assuming btn-success is green as per main.css themeing strategy #}
+                    <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn btn-success">
                         <i class="fas fa-share-alt mr-1"></i> Share
                     </a>
                     
-                    <form action="{{ url_for('visual.delete', id=visualisation.id) }}" method="POST" class="inline">
-                        {# CSRF token should be included if CSRFProtect is active for POSTs #}
+                    <form action="{{ url_for('visual.delete', id=visualisation.id) }}" method="POST" class="inline m-0">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn bg-red-600 hover:bg-red-700" 
+                        {# Assuming btn-danger is red #}
+                        <button type="submit" class="btn btn-danger" 
                                 onclick="return confirm('Are you sure you want to delete this dashboard? This action cannot be undone.');">
                             <i class="fas fa-trash-alt mr-1"></i> Delete
                         </button>
@@ -64,6 +61,7 @@
         
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div class="lg:col-span-1">
+                {# Card uses direct CSS variables from main.css, which is good #}
                 <div class="bg-card-bg shadow-md rounded-lg overflow-hidden mb-6 border border-border-color">
                     <div class="p-4 border-b border-border-color">
                         <h2 class="text-lg font-semibold text-text-color">Dashboard Details</h2>
@@ -76,6 +74,7 @@
                             </li>
                             <li class="flex justify-between">
                                 <span class="text-text-secondary">Dataset:</span>
+                                {# text-magenta-primary is good use of CSS var #}
                                 <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else '#' }}" class="font-medium text-magenta-primary hover:text-magenta-light">
                                     {{ dataset.original_filename }}
                                 </a>
@@ -94,24 +93,26 @@
                     </div>
                     <div class="p-4 space-y-3">
                         {% if dataset.user_id == current_user.id %}
-                            <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn bg-green-600 hover:bg-green-700 text-white w-full text-center">
+                            <a href="{{ url_for('visual.share', id=visualisation.id) }}" class="btn btn-success w-full text-center">
                                 <i class="fas fa-share-alt mr-1"></i> Share Dashboard
                             </a>
                         {% endif %}
                         
-                        <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else '#' }}" class="btn bg-accent-blue hover:bg-accent-blue-dark text-white w-full text-center">
+                        {# Assuming btn-accent-blue, btn-accent-purple, btn-accent-cyan are defined or bg-accent-* classes work correctly with .btn #}
+                        <a href="{{ url_for('data.view', id=dataset.id) if 'data.view' in current_app.view_functions else '#' }}" class="btn btn-accent-blue w-full text-center">
                             <i class="fas fa-database mr-1"></i> View Dataset
                         </a>
                         
-                        <button id="fullscreen-btn" class="btn bg-accent-purple hover:bg-accent-purple-dark text-white w-full text-center">
+                        <button id="fullscreen-btn" class="btn btn-accent-purple w-full text-center">
                             <i class="fas fa-expand mr-1"></i> Fullscreen Mode
                         </button>
                         
-                        <button id="download-btn-dashboard" class="btn bg-gray-500 hover:bg-gray-600 text-white w-full text-center">
+                        {# bg-gray-500 button changed to btn-secondary #}
+                        <button id="download-btn-dashboard" class="btn btn-secondary w-full text-center">
                             <i class="fas fa-download mr-1"></i> Download HTML
                         </button>
                         
-                        <button id="refresh-btn-dashboard" class="btn bg-accent-cyan hover:bg-accent-cyan-dark text-white w-full text-center">
+                        <button id="refresh-btn-dashboard" class="btn btn-accent-cyan w-full text-center">
                             <i class="fas fa-sync-alt mr-1"></i> Refresh Dashboard
                         </button>
                     </div>
@@ -131,9 +132,9 @@
                         
                         <div id="dashboard-error" class="dashboard-error" style="display: none;">
                             <h3><i class="fas fa-exclamation-circle"></i> Dashboard Display Issue</h3>
-                            <p class="text-text-secondary">There was a problem displaying the dashboard. This may be due to browser security restrictions or a temporary issue.</p>
+                            <p>There was a problem displaying the dashboard. This may be due to browser security restrictions or a temporary issue.</p> {# Removed text-text-secondary as dashboard-error p handles color #}
                             <div>
-                                <button id="reload-dashboard-btn" class="btn bg-accent-blue hover:bg-accent-blue-dark text-white">
+                                <button id="reload-dashboard-btn" class="btn btn-accent-blue">
                                     <i class="fas fa-sync-alt mr-1"></i> Try Again
                                 </button>
                                 <a href="{{ url_for('visual.view', id=visualisation.id) }}" class="btn btn-secondary ml-2">
@@ -158,13 +159,9 @@
     <iframe id="fullscreen-frame" class="dashboard-frame" 
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"></iframe>
 </div>
-
-{# The dashboard_template_html and actual_dataset_json are now passed via <script> in head_scripts block #}
 {% endblock %}
 
 {% block scripts %}
-    {# Rename visual_generate.js to dashboard_renderer.js and include it here #}
     <script src="{{ url_for('static', filename='js/dashboard_renderer.js') }}" defer></script>
-    {# visual.js might still be needed for general visual page interactions if any remain #}
     <script src="{{ url_for('static', filename='js/visual.js') }}" defer></script> 
 {% endblock %}

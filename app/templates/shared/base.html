@@ -39,19 +39,19 @@
                 {% if current_user.is_authenticated %}
                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
                     <a href="{{ url_for('visual.index') }}"
-                       class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('visual') %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent hover:border-gray-300{% endif %}">
+                       class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('visual') %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                           Visualizations
                     </a>
                     {# Use the new context function to check if data blueprint routes exist #}
                     {% if data_blueprint_exists_and_has_route('index') %}
                     <a href="{{ url_for('data.index') }}"
-                      class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent hover:border-gray-300{% endif %}">
+                      class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                         Datasets 
                     </a>
                     {% endif %}
                     {% if data_blueprint_exists_and_has_route('upload') %}
                     <a href="{{ url_for('data.upload') }}"
-                        class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent hover:border-gray-300{% endif %}">
+                        class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                          Upload   
                     </a>
                     {% endif %}
@@ -62,31 +62,31 @@
                     {% if current_user.is_authenticated %}
                     <div class="ml-3 relative">
                         <div class="flex items-center">
-                            <span class="mr-2">{{ current_user.name }}</span>
+                            <span class="mr-2 text-text-color">{{ current_user.name }}</span>
                             <div class="relative">
-                                <button type="button" id="user-menu-button" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2">
+                                <button type="button" id="user-menu-button" class="flex text-sm rounded-full focus:outline-none">
                                     <span class="sr-only">Open user menu</span>
-                                    <div class="h-8 w-8 rounded-full flex items-center justify-center" style="background-color: var(--magenta-primary); color: var(--text-color);">
+                                    <div class="h-8 w-8 rounded-full flex items-center justify-center">
                                         {{ current_user.name[0] }}
                                     </div>
                                 </button>
                             </div>
-                            <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-48 bg-card-bg border border-border-color rounded-md shadow-xl z-50 py-1 focus:outline-none ring-1 ring-black ring-opacity-5" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
-                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm text-text-color hover:bg-highlight" role="menuitem">Your Profile</a>
-                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm text-text-color hover:bg-highlight" role="menuitem">Change Password</a>
-                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm text-text-color hover:bg-highlight" role="menuitem">Sign out</a>
+                            <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-48 rounded-md shadow-xl z-50 py-1 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
+                                <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-sm" role="menuitem">Your Profile</a>
+                                <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-sm" role="menuitem">Change Password</a>
+                                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm" role="menuitem">Sign out</a>
                             </div>
                         </div>
                     </div>
                     {% else %}
                     <div class="flex space-x-4">
-                        <a href="{{ url_for('auth.login') }}" class="text-text-color hover:text-magenta-light px-3 py-2 rounded-md text-sm font-medium">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="bg-magenta-primary hover:bg-magenta-dark text-white px-3 py-2 rounded-md text-sm font-medium">Register</a>
+                        <a href="{{ url_for('auth.login') }}" class="px-3 py-2 rounded-md text-sm font-medium">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="bg-magenta-primary px-3 py-2 rounded-md text-sm font-medium">Register</a>
                     </div>
                     {% endif %}
                 </div>
                 <div class="-mr-2 flex items-center sm:hidden">
-                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-text-color hover:text-white hover:bg-highlight focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                    <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md focus:outline-none">
                         <span class="sr-only">Open main menu</span>
                         <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -97,35 +97,35 @@
         </div>
 
         <div id="mobile-menu" class="hidden sm:hidden">
-            <div class="pt-2 pb-3 space-y-1">
+            <div class="pt-2 pb-3 space-y-1 px-2">
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint and request.endpoint == 'visual.index' %}bg-highlight text-white{% else %}text-text-color-muted hover:bg-highlight-hover hover:text-white{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('visual.index') }}" class="{% if request.endpoint and request.endpoint == 'visual.index' %}bg-highlight{% else %}{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Visualizations
                 </a>
                 {% if data_blueprint_exists_and_has_route('index') %}
-                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}bg-highlight text-white{% else %}text-text-color-muted hover:bg-highlight-hover hover:text-white{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('data.index') }}" class="{% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}bg-highlight{% else %}{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Datasets
                 </a>
                 {% endif %}
                 {% if data_blueprint_exists_and_has_route('upload') %}
-                <a href="{{ url_for('data.upload') }}" class="{% if request.endpoint and request.endpoint == 'data.upload' %}bg-highlight text-white{% else %}text-text-color-muted hover:bg-highlight-hover hover:text-white{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('data.upload') }}" class="{% if request.endpoint and request.endpoint == 'data.upload' %}bg-highlight{% else %}{% endif %} block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Upload
                 </a>
                 {% endif %}
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="text-text-color-muted hover:bg-highlight-hover hover:text-white block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Login
                 </a>
-                <a href="{{ url_for('auth.register') }}" class="text-text-color-muted hover:bg-highlight-hover hover:text-white block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Register
                 </a>
                 {% endif %}
             </div>
             {% if current_user.is_authenticated %}
-            <div class="pt-4 pb-3 border-t border-border-color">
+            <div class="pt-4 pb-3 border-t">
                 <div class="flex items-center px-4">
                     <div class="flex-shrink-0">
-                        <div class="h-10 w-10 rounded-full flex items-center justify-center" style="background-color: var(--magenta-primary); color: var(--text-color);">
+                        <div class="h-10 w-10 rounded-full flex items-center justify-center">
                             {{ current_user.name[0] }}
                         </div>
                     </div>
@@ -134,14 +134,14 @@
                         <div class="text-sm font-medium text-text-secondary">{{ current_user.email }}</div>
                     </div>
                 </div>
-                <div class="mt-3 space-y-1">
-                    <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-base font-medium text-text-color-muted hover:bg-highlight-hover hover:text-white rounded-md">
+                <div class="mt-3 space-y-1 px-2">
+                    <a href="{{ url_for('auth.profile') }}" class="block px-4 py-2 text-base font-medium rounded-md">
                         Your Profile
                     </a>
-                    <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-base font-medium text-text-color-muted hover:bg-highlight-hover hover:text-white rounded-md">
+                    <a href="{{ url_for('auth.change_password') }}" class="block px-4 py-2 text-base font-medium rounded-md">
                         Change Password
                     </a>
-                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-base font-medium text-text-color-muted hover:bg-highlight-hover hover:text-white rounded-md">
+                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-base font-medium rounded-md">
                         Sign out
                     </a>
                 </div>
@@ -155,7 +155,7 @@
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="flash-message flash-{{ category }}">
-                        {{ message }}
+                        <span>{{ message }}</span>
                         <button type="button" class="close-flash ml-2">×</button>
                     </div>
                 {% endfor %}
@@ -169,11 +169,11 @@
 
     <footer class="py-4 mt-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center">
-                <div class="text-sm text-text-secondary">
-                    © 2025 DynaDash. All rights reserved.
+            <div class="flex flex-col sm:flex-row justify-between items-center text-center sm:text-left">
+                <div class="text-sm mb-2 sm:mb-0">
+                    © {% block current_year %}2025{% endblock %} DynaDash. All rights reserved.
                 </div>
-                <div class="text-sm text-text-secondary">
+                <div class="text-sm">
                     Created by Matthew Haskins, Leo Chen, Jonas Liu, Ziyue Xu
                 </div>
             </div>

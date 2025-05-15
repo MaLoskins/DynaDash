@@ -3,11 +3,11 @@
 {% block title %}Error {{ error_code }} - DynaDash{% endblock %}
 
 {% block content %}
-<div class="flex flex-col items-center justify-center py-16">
-    <div class="text-red-500 text-6xl font-bold mb-4">{{ error_code }}</div>
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ error_message }}</h1>
+<div class="flex flex-col items-center justify-center py-16 px-4">
+    <div class="text-6xl font-bold mb-4 text-danger">{{ error_code }}</div>
+    <h1 class="text-3xl font-bold mb-6 text-center">{{ error_message }}</h1>
     
-    <p class="text-gray-600 mb-8 text-center max-w-lg">
+    <p class="mb-8 text-center max-w-lg">
         {% if error_code == 404 %}
         The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
         {% elif error_code == 403 %}
@@ -19,11 +19,11 @@
         {% endif %}
     </p>
     
-    <div class="flex space-x-4">
-        <a href="{{ url_for('visual.index') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+    <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+        <a href="{{ url_for('visual.index') if current_user.is_authenticated else url_for('visual.welcome') }}" class="btn w-full sm:w-auto">
             Go to Home
         </a>
-        <button onclick="window.history.back()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">
+        <button onclick="window.history.back()" class="btn btn-secondary w-full sm:w-auto">
             Go Back
         </button>
     </div>
