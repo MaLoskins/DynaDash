@@ -2373,6 +2373,8 @@ pre code { background-color: transparent; padding: 0; border: none; }
     font-size: 0.8rem;      /* Smaller font for headers */
     /* Padding is inherited from the rule above or can be set explicitly if different values are needed */
 }
+
+<<<<<<<<< Temporary merge branch 1
 /* Remove hover effect for specific elements */
 .no-hover:hover {
   transform: none !important;
