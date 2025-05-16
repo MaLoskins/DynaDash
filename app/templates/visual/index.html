@@ -14,14 +14,14 @@
         </div>
 
         {# Section for User's Own Dashboards (Paginated) #}
-        {% if user_visualisations and user_visualisations.items %}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {% for vis in user_visualisations.items %}  {# Iterate through paginated items #}
-                    <div class="bg-card-bg shadow-md rounded-lg overflow-hidden border border-border-color flex flex-col">
-                        <div class="p-4 border-b border-border-color">
-                            <h2 class="text-lg font-semibold text-text-color truncate" title="{{ vis.title }}">{{ vis.title }}</h2>
-                        </div>
-                        <div class="p-4 flex-grow">
+{% if user_visualisations and user_visualisations.items %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for vis in user_visualisations.items %}
+            <div class="bg-white shadow-md rounded-lg overflow-hidden border border-border-color flex flex-col"> {# THIS IS A CARD #}
+                <div class="p-4 border-b border-border-color">
+                    <h2 class="text-lg font-semibold text-text-color truncate" title="{{ vis.title }}">{{ vis.title }}</h2>
+                </div>
+                <div class="p-4 flex-grow">
                             {% if vis.description %}
                                 <p class="text-sm text-text-secondary mb-3 h-16 overflow-hidden text-ellipsis">{{ vis.description }}</p>
                             {% else %}
@@ -93,7 +93,7 @@
             {% endif %}
 
         {% elif not shared_visualisations %} {# Only show "No Dashboards Yet" if BOTH lists are empty #}
-             <div class="bg-card-bg border border-border-color rounded-lg p-12 text-center">
+             <div class="bg-white border border-border-color rounded-lg p-12 text-center">
                 <div class="text-text-tertiary text-5xl mb-4">
                     <i class="fas fa-chart-bar"></i>
                 </div>
