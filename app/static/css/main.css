@@ -388,7 +388,7 @@ nav .sm\:space-x-8 > a.border-magenta-primary:after {
 
 /* User menu button - Enhanced styling */
 #user-menu-button {
-    /* background-color: var(--magenta-dark) !important; */
+    background: var(--card-bg) !important;
     background-image:
         radial-gradient(
             circle at 70% 30%,
