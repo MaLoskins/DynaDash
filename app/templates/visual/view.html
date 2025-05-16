@@ -4,6 +4,7 @@
 
 {% block head_scripts %} {# Changed from 'head' to 'head_scripts' to match base.html #}
     {{ super() }}
+    {# Overriding styling here so that dashboard has more finetuned styling to facilitate iframe #}
     <style>
         .dashboard-frame { width: 100%; height: 800px; min-height: 800px; border: none; background-color: var(--card-bg); } /* Changed background to var(--card-bg) */
         .dashboard-frame canvas { max-width: 100%; }
@@ -19,7 +20,7 @@
         .spinner { border: 4px solid var(--surface-3); width: 40px; height: 40px; border-radius: 50%; border-left-color: var(--magenta-primary); animation: spin 1s ease infinite; margin-bottom: 15px; } /* Themed spinner */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .lg\:col-span-3 { width: 100%; }
-    </style>
+    </style> 
     <script>
         window.dynadashDatasetJson = {{ actual_dataset_json|safe }};
         window.dynadashDashboardTemplateHtml = {{ dashboard_template_html|tojson|safe }};
@@ -61,8 +62,8 @@
         
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div class="lg:col-span-1">
-                {# Card uses direct CSS variables from main.css, which is good #}
-                <div class="bg-card-bg shadow-md rounded-lg overflow-hidden mb-6 border border-border-color">
+                {# Card uses bg-white which is themed by main.css #}
+                <div class="bg-white shadow-md rounded-lg overflow-hidden mb-6 border border-border-color">
                     <div class="p-4 border-b border-border-color">
                         <h2 class="text-lg font-semibold text-text-color">Dashboard Details</h2>
                     </div>
@@ -87,7 +88,7 @@
                     </div>
                 </div>
                 
-                <div class="bg-card-bg shadow-md rounded-lg overflow-hidden border border-border-color">
+                <div class="bg-white shadow-md rounded-lg overflow-hidden border border-border-color">
                     <div class="p-4 border-b border-border-color">
                         <h2 class="text-lg font-semibold text-text-color">Actions</h2>
                     </div>
@@ -120,7 +121,7 @@
             </div>
             
             <div class="lg:col-span-3">
-                <div class="bg-card-bg shadow-md rounded-lg overflow-hidden w-full border border-border-color">
+                <div class="bg-white shadow-md rounded-lg overflow-hidden w-full border border-border-color">
                     <div class="p-4 border-b border-border-color">
                         <h2 class="text-lg font-semibold text-text-color">Dashboard</h2>
                     </div>

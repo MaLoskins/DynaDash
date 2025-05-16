@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, request, jsonify, g
 from flask_login import login_user, logout_user, login_required, current_user
 from . import auth
 from .forms import LoginForm, RegistrationForm, ChangePasswordForm
-from ...models import db, User
+from ...models import db, User, Dataset, Visualisation, Share # Added Dataset, Visualisation, Share
 
 
 @auth.route('/login', methods=['GET', 'POST'])
@@ -53,11 +53,21 @@ def register():
     
     return render_template('auth/register.html', title='Register', form=form)
 
-@auth.route('/profile', methods=['GET'])
+@auth.route('/profile', methods=['GET']) # Assuming 'auth' is your Blueprint instance
 @login_required
 def profile():
     """Display user profile."""
-    return render_template('auth/profile.html', title='Profile')
+    # Query the counts for the currently logged-in user
+    dataset_count = Dataset.query.filter_by(user_id=current_user.id).count()
+    visual_count = Visualisation.query.join(Dataset).filter(Dataset.user_id == current_user.id).count()
+
+    
+    return render_template(
+        'auth/profile.html', 
+        title='My Profile', # Updated title to match template
+        dataset_count=dataset_count, 
+        visual_count=visual_count
+    )
 
 @auth.route('/change-password', methods=['GET', 'POST'])
 @login_required
