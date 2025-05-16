@@ -1,8 +1,19 @@
+from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
+# Enable SQLite foreign key support
+@event.listens_for(Engine, "connect")
+def enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    if dbapi_connection.__class__.__module__.startswith('sqlite3'):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+# Initialize SQLAlchemy
 db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
@@ -16,7 +27,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    datasets = db.relationship('Dataset', backref='owner', lazy='dynamic')
+    datasets = db.relationship('Dataset', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
     owned_shares = db.relationship('Share', foreign_keys='Share.owner_id', backref='owner', lazy='dynamic')
     received_shares = db.relationship('Share', foreign_keys='Share.target_id', backref='target', lazy='dynamic')
     
@@ -31,52 +42,49 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(password)
     
     def verify_password(self, password):
-        """Check if the provided password matches the hash."""
+        """Check if password matches the hashed password."""
         return check_password_hash(self.password_hash, password)
     
     def __repr__(self):
         return f'<User {self.name}>'
 
-
 class Dataset(db.Model):
-    """Dataset model for storing uploaded data files."""
+    """Dataset model for storing uploaded datasets."""
     __tablename__ = 'dataset'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
-    original_filename = db.Column(db.String(255), nullable=False)
-    file_path = db.Column(db.String(255), nullable=False)
-    file_type = db.Column(db.String(10), nullable=False)  # 'csv' or 'json'
-    n_rows = db.Column(db.Integer)
-    n_columns = db.Column(db.Integer)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    filename = db.Column(db.String(128), nullable=False)
+    original_filename = db.Column(db.String(128), nullable=False)
+    file_path = db.Column(db.String(256), nullable=False)
+    file_type = db.Column(db.String(10), nullable=False)  # csv, json, etc.
+    n_rows = db.Column(db.Integer, nullable=False)
+    n_columns = db.Column(db.Integer, nullable=False)
     is_public = db.Column(db.Boolean, default=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    visualisations = db.relationship('Visualisation', backref='dataset', lazy='dynamic')
+    visualisations = db.relationship('Visualisation', backref='dataset', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Dataset {self.filename}>'
 
-
 class Visualisation(db.Model):
-    """Visualisation model for storing chart data."""
+    """Visualisation model for storing generated visualisations."""
     __tablename__ = 'visualisation'
     
     id = db.Column(db.Integer, primary_key=True)
     dataset_id = db.Column(db.Integer, db.ForeignKey('dataset.id'), nullable=False)
-    title = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    spec = db.Column(db.Text, nullable=False)  # JSON/HTML blob
+    title = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    spec = db.Column(db.Text, nullable=False)  # HTML/SVG/js snippet
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
         return f'<Visualisation {self.title}>'
 
-
 class Share(db.Model):
-    """Share model for managing access control."""
+    """Share model for managing access to datasets and visualisations."""
     __tablename__ = 'share'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -86,9 +94,5 @@ class Share(db.Model):
     object_id = db.Column(db.Integer, nullable=False)
     granted_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    __table_args__ = (
-        db.UniqueConstraint('owner_id', 'target_id', 'object_type', 'object_id', name='unique_share'),
-    )
-    
     def __repr__(self):
-        return f'<Share {self.object_type}:{self.object_id} from {self.owner_id} to {self.target_id}>'
+        return f'<Share {self.object_type} {self.object_id} from {self.owner_id} to {self.target_id}>'
