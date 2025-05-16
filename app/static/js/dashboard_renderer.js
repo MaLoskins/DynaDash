@@ -19,7 +19,15 @@ document.addEventListener("DOMContentLoaded", function () {
         // Ensure data is an array, default to empty if undefined/null
         const dataToInject = (typeof data !== 'undefined' && data !== null) ? data : [];
         const dataScript = `<script>window.dynadashData = ${JSON.stringify(dataToInject)};<\/script>`;
-        
+        const chartConfigScript = `
+            <script>
+                if (window.Chart) {
+                    // Restore aspect ratio so canvases don't stretch infinitely
+                    Chart.defaults.maintainAspectRatio = true;
+                    Chart.defaults.aspectRatio = 4;
+                }
+            <\/script>`;
+    
         let finalHtml = template;
         const headEndTag = '</head>';
         const bodyStartTag = '<body>';
@@ -27,11 +35,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const bodyStartIndex = template.toLowerCase().indexOf(bodyStartTag);
 
         if (headEndIndex !== -1) {
-            finalHtml = template.slice(0, headEndIndex) + dataScript + "\n" + template.slice(headEndIndex);
+            finalHtml = template.slice(0, headEndIndex) + dataScript + "\n" + chartConfigScript + "\n" + template.slice(headEndIndex);;
         } else if (bodyStartIndex !== -1) {
-            finalHtml = template.slice(0, bodyStartIndex + bodyStartTag.length) + "\n" + dataScript + template.slice(bodyStartIndex + bodyStartTag.length);
+            finalHtml = template.slice(0, bodyStartIndex + bodyStartTag.length) + "\n" + dataScript + "\n" + chartConfigScript + template.slice(bodyStartIndex + bodyStartTag.length);
         } else {
-            finalHtml = dataScript + template; 
+            finalHtml = chartConfigScript + dataScript + template;
         }
         return finalHtml;
     }
