@@ -1,5 +1,14 @@
 {% extends "shared/base.html" %}
 
+{% block styles %}
+  {{ super() }}
+  <style>
+    .group:hover h2 {
+      color: var(--magenta-primary) !important;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
 <div class="flex flex-col items-center justify-center min-h-screen text-center px-4 space-y-8 pt-12">
     {# text-blue-600 is themed to magenta by main.css, including text-shadow effects #}
@@ -25,28 +34,33 @@
                     bg-white rounded-2xl 
                     transform hover:-translate-y-1
                     transition-transform duration-300 
-                    ring-0 group-hover:shadow-glow-intense {# Use main.css glow #}
-                    ring-offset-2 ring-offset-gray-900 {# ring-offset might need adjustment with shadow glow #}
-                    overflow-hidden"
+                    ring-0 ring-offset-2 ring-offset-gray-900
+                    group-hover:ring-4
+                    group-hover:ring-[var(--magenta-glow-strong)]
+                    group-hover:ring-offset-2
+                    group-hover:ring-offset-gray-900"
         >
-            <div class="h-32 flex items-center justify-center">
-                 {# group-hover:!text-pink-600 changed to group-hover:text-magenta-primary for consistency #}
-                <h2 class="text-2xl font-semibold group-hover:text-magenta-primary transition-colors duration-200">
-                  {{ feature.icon }} {{ feature.title }}
-                </h2>
-            </div>
-            <div
-                class="absolute left-0 right-0 bottom-0
-                       opacity-0 group-hover:opacity-100
-                       transition-opacity duration-700 ease-in-out
-                       px-6 pb-4
-                       group-hover:delay-150
-                       shadow-inner"
-            >
-                {# text-gray-300 is a light gray, suitable on dark card. Corresponds to text-text-color-muted or lighter. #}
-                <p class="text-text-color-muted"> 
-                   {{ feature.desc }}
-                </p>
+            <div class="overflow-hidden rounded-2xl">
+                <div class="h-32 flex items-center justify-center">
+                     {# group-hover:!text-pink-600 changed to group-hover:text-magenta-primary for consistency #}
+                    <h2 class="text-2xl font-semibold group-hover:text-magenta-primary transition-colors duration-200">
+                        {{ feature.icon }} {{ feature.title }}
+                    </h2>
+                </div>
+
+                <div
+                    class="absolute left-0 right-0 bottom-0
+                            opacity-0 group-hover:opacity-100
+                            transition-opacity duration-700 ease-in-out
+                            px-6 pb-4
+                            group-hover:delay-150
+                            shadow-inner"
+                >
+                    {# text-gray-300 is a light gray, suitable on dark card. Corresponds to text-text-color-muted or lighter. #}
+                    <p class="text-text-color-muted"> 
+                       {{ feature.desc }}
+                    </p>
+                </div>
             </div>
         </div>
     {% endfor %}
