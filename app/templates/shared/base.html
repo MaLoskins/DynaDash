@@ -113,10 +113,10 @@
                 </a>
                 {% endif %}
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md" {% if request.endpoint == 'auth.login' %} bg-pink-600 text-white {% else %} text-gray-300 hover:bg-gray-700 hover:text-white {% endif %}>
                     Login
                 </a>
-                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
+                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md" {% if request.endpoint == 'auth.register' %} bg-pink-600 text-white {% else %} text-gray-300 hover:bg-gray-700 hover:text-white {% endif %}>
                     Register
                 </a>
                 {% endif %}
