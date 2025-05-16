@@ -80,8 +80,24 @@
                     </div>
                     {% else %}
                     <div class="flex space-x-4">
-                        <a href="{{ url_for('auth.login') }}" class="px-3 py-2 rounded-md text-sm font-medium">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="bg-magenta-primary px-3 py-2 rounded-md text-sm font-medium">Register</a>
+                        <a href="{{ url_for('auth.login') }}" 
+                           class="px-3 py-2 rounded-md text-sm font-medium 
+                                {% if request.path == url_for('auth.login') %} 
+                                  bg-magenta-primary text-white 
+                                {% else %}
+                                  text-gray-300 hover:bg-gray-700 hover:text-white
+                                {% endif %}">
+                              Login
+                            </a>
+                        <a href="{{ url_for('auth.register') }}" 
+                           class="px-3 py-2 rounded-md text-sm font-medium 
+                                {% if request.path == url_for('auth.register') %} 
+                                  bg-magenta-primary text-white 
+                                {% else %} 
+                                  text-gray-300 hover:bg-gray-700 hover:text-white 
+                                {% endif %}">
+                              Register
+                            </a>
                     </div>
                     {% endif %}
                 </div>
@@ -113,10 +129,10 @@
                 </a>
                 {% endif %}
                 {% else %}
-                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md" {% if request.endpoint == 'auth.login' %} bg-pink-600 text-white {% else %} text-gray-300 hover:bg-gray-700 hover:text-white {% endif %}>
+                <a href="{{ url_for('auth.login') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Login
                 </a>
-                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md" {% if request.endpoint == 'auth.register' %} bg-pink-600 text-white {% else %} text-gray-300 hover:bg-gray-700 hover:text-white {% endif %}>
+                <a href="{{ url_for('auth.register') }}" class="block pl-3 pr-4 py-2 text-base font-medium rounded-md">
                     Register
                 </a>
                 {% endif %}
