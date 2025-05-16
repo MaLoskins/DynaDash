@@ -388,7 +388,7 @@ nav .sm\:space-x-8 > a.border-magenta-primary:after {
 
 /* User menu button - Enhanced styling */
 #user-menu-button {
-    background-color: var(--magenta-dark) !important;
+    background: var(--card-bg) !important;
     background-image:
         radial-gradient(
             circle at 70% 30%,
@@ -761,7 +761,7 @@ nav .flex.space-x-4 > a:first-child { /* Login button */
     color: var(--text-color-muted) !important;
     background-color: transparent !important;
 }
-nav .flex.space-x-4 > a:first-child:hover {
+nav .flex.space-x-4 > a:hover {
     color: var(--magenta-light) !important;
     background-color: var(--highlight) !important;
 }
@@ -894,7 +894,7 @@ a:not(nav a):not(.btn):not([class*="bg-"]):not([class*="text-white"]):not([class
 .bg-white, .bg-white.rounded-2xl, div.p-6.bg-white { 
     background-color: var(--card-bg) !important;
     background-image: var(--gradient-card);
-    color: var(--text-color) !important;
+    color: var(--text-color);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg); 
     transition: all var(--transition-normal);
@@ -917,7 +917,7 @@ a:not(nav a):not(.btn):not([class*="bg-"]):not([class*="text-white"]):not([class
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
-    color: var(--text-color) !important;
+    color: var(--text-color);
     letter-spacing: var(--letter-spacing-tight);
     line-height: var(--line-height-compact);
     font-weight: var(--font-weight-semibold);
@@ -2372,6 +2372,13 @@ pre code { background-color: transparent; padding: 0; border: none; }
 .data-preview-table-container table th {
     font-size: 0.8rem;      /* Smaller font for headers */
     /* Padding is inherited from the rule above or can be set explicitly if different values are needed */
+}
+
+/* Remove hover effect for specific elements */
+.no-hover:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: none !important;
 }
 
 .themed-card {

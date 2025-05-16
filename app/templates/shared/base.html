@@ -39,19 +39,19 @@
                 {% if current_user.is_authenticated %}
                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
                     <a href="{{ url_for('visual.index') }}"
-                       class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('visual') %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
+                       class="inline-flex w-28 justify-center items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('visual') %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                           Visualizations
                     </a>
                     {# Use the new context function to check if data blueprint routes exist #}
                     {% if data_blueprint_exists_and_has_route('index') %}
                     <a href="{{ url_for('data.index') }}"
-                      class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
+                      class="inline-flex w-28 justify-center items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint.startswith('data') and request.endpoint != 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                         Datasets 
                     </a>
                     {% endif %}
                     {% if data_blueprint_exists_and_has_route('upload') %}
                     <a href="{{ url_for('data.upload') }}"
-                        class="inline-flex items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
+                        class="inline-flex w-28 justify-center items-center px-1 pt-1 text-sm font-medium {% if request.endpoint and request.endpoint == 'data.upload' %}border-b-2 border-magenta-primary{% else %}border-b-2 border-transparent{% endif %}">
                          Upload   
                     </a>
                     {% endif %}
@@ -64,7 +64,7 @@
                         <div class="flex items-center">
                             <span class="mr-2 text-text-color">{{ current_user.name }}</span>
                             <div class="relative">
-                                <button type="button" id="user-menu-button" class="flex text-sm rounded-full focus:outline-none">
+                                <button type="button" id="user-menu-button" class="h-10 w-10 flex text-sm rounded-full focus:outline-none">
                                     <span class="sr-only">Open user menu</span>
                                     <div class="h-8 w-8 rounded-full flex items-center justify-center">
                                         {{ current_user.name[0] }}
@@ -80,8 +80,24 @@
                     </div>
                     {% else %}
                     <div class="flex space-x-4">
-                        <a href="{{ url_for('auth.login') }}" class="px-3 py-2 rounded-md text-sm font-medium">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="bg-magenta-primary px-3 py-2 rounded-md text-sm font-medium">Register</a>
+                        <a href="{{ url_for('auth.login') }}" 
+                           class="px-3 py-2 rounded-md text-sm font-medium 
+                                {% if request.path == url_for('auth.login') %} 
+                                  bg-magenta-primary text-white 
+                                {% else %}
+                                  text-gray-300 hover:bg-gray-700 hover:text-white
+                                {% endif %}">
+                            Login
+                        </a>
+                        <a href="{{ url_for('auth.register') }}" 
+                           class="px-3 py-2 rounded-md text-sm font-medium 
+                                {% if request.path == url_for('auth.register') %} 
+                                  bg-magenta-primary text-white 
+                                {% else %} 
+                                  text-gray-300 hover:bg-gray-700 hover:text-white 
+                                {% endif %}">
+                            Register
+                        </a>
                     </div>
                     {% endif %}
                 </div>
