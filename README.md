@@ -30,7 +30,7 @@
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/DynaDash.git
+git clone https://github.com/MaLoskins/DynaDash.git
 cd DynaDash
 ```
 
@@ -60,7 +60,7 @@ Create a `.env` file based on the provided `.env.example`:
 cp .env.example .env
 ```
 
-Edit the `.env` file with your settings, especially your Anthropic API key:
+Edit the `.env` file with your settings, especially your Anthropic API key (For the purposes of submission a preloaded key is provided in the submitted `.env` and `.env.example`):
 
 ```ini
 # Flask settings
