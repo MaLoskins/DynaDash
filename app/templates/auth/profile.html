@@ -1,124 +1,185 @@
 {% extends "shared/base.html" %}
 
-{% block title %}Profile - DynaDash{% endblock %}
+{% block title %}My Profile - DynaDash{% endblock %}
 
 {% block content %}
-<div class="py-8">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="shadow overflow-hidden sm:rounded-lg">
-            <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-                <div>
-                    <h3 class="text-lg leading-6 font-medium">
-                        User Profile
-                    </h3>
-                    <p class="mt-1 max-w-2xl text-sm">
-                        Your personal information and account details.
+<div class="py-12">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <!-- Profile Header Card -->
+        <div class="bg-white shadow-xl rounded-xl overflow-hidden mb-10 transform hover:scale-105 transition-transform duration-300">
+            <div class="md:flex">
+                <div class="md:flex-shrink-0 p-6 flex items-center justify-center md:justify-start">
+                    {# Larger, styled avatar placeholder #}
+                    <div class="h-24 w-24 rounded-full flex items-center justify-center text-4xl font-bold
+                                bg-magenta-primary text-white shadow-lg ring-4 ring-magenta-glow-faint">
+                        {{ current_user.name[0] }}
+                    </div>
+                </div>
+                <div class="p-6 md:p-8 flex-grow">
+                    <h2 class="text-3xl font-bold text-text-color mb-1">{{ current_user.name }}</h2>
+                    <p class="text-lg text-text-secondary mb-3">{{ current_user.email }}</p>
+                    <p class="text-sm text-text-tertiary">
+                        Member since: {{ current_user.created_at.strftime('%B %d, %Y') }}
                     </p>
                 </div>
-                <a href="{{ url_for('auth.change_password') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm">
-                    Change Password
-                </a>
+                <div class="p-6 md:p-8 flex items-center">
+                    <a href="{{ url_for('auth.change_password') }}" class="btn btn-secondary">
+                        <i class="fas fa-key mr-2"></i> Change Password
+                    </a>
+                </div>
             </div>
-            <div class="border-t border-border-color">
-                <dl>
-                    <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        </div>
+
+        <!-- Personal Information Section -->
+        <div class="bg-white shadow-lg rounded-xl overflow-hidden mb-10">
+            <div class="px-6 py-5 border-b border-divider">
+                <h3 class="text-xl leading-6 font-semibold text-text-color flex items-center">
+                    <i class="fas fa-user-circle mr-3 text-magenta-primary"></i>
+                    Personal Information
+                </h3>
+                <p class="mt-1 text-sm text-text-secondary">
+                    Your registered account details.
+                </p>
+            </div>
+            <div class="border-t border-divider">
+                <dl class="divide-y divide-divider">
+                    <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-4 items-center hover:bg-highlight transition-colors">
                         <dt class="text-sm font-medium text-text-secondary">
                             Full name
                         </dt>
-                        <dd class="mt-1 text-sm sm:mt-0 sm:col-span-2">
+                        <dd class="mt-1 text-md text-text-color md:mt-0 md:col-span-2">
                             {{ current_user.name }}
                         </dd>
                     </div>
-                    <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-t border-border-color">
+                    <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-4 items-center hover:bg-highlight transition-colors">
                         <dt class="text-sm font-medium text-text-secondary">
                             Email address
                         </dt>
-                        <dd class="mt-1 text-sm sm:mt-0 sm:col-span-2">
+                        <dd class="mt-1 text-md text-text-color md:mt-0 md:col-span-2">
                             {{ current_user.email }}
                         </dd>
                     </div>
-                    <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-t border-border-color">
+                    <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-4 items-center hover:bg-highlight transition-colors">
                         <dt class="text-sm font-medium text-text-secondary">
                             Account created
                         </dt>
-                        <dd class="mt-1 text-sm sm:mt-0 sm:col-span-2">
-                            {{ current_user.created_at.strftime('%B %d, %Y') }}
+                        <dd class="mt-1 text-md text-text-color md:mt-0 md:col-span-2">
+                            {{ current_user.created_at.strftime('%B %d, %Y at %H:%M') }}
                         </dd>
                     </div>
                 </dl>
             </div>
         </div>
         
-        <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div class="shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium">
+        <!-- Activity Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            {# My Datasets Card #}
+            <div class="bg-white shadow-lg rounded-xl overflow-hidden flex flex-col 
+                        transform hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                <div class="px-6 py-5 border-b border-divider">
+                    <h3 class="text-xl leading-6 font-semibold text-text-color flex items-center">
+                        <i class="fas fa-database mr-3 text-accent-blue"></i>
                         My Datasets
                     </h3>
-                    <p class="mt-1 max-w-2xl text-sm text-text-secondary">
-                        Summary of your uploaded datasets.
+                    <p class="mt-1 text-sm text-text-secondary">
+                        Overview of your uploaded data.
                     </p>
                 </div>
-                <div class="border-t border-border-color px-4 py-5 sm:px-6">
-                    <div class="text-center">
-                        <a href="{{ url_for('data.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-magenta-primary">
-                            View All Datasets
-                        </a>
+                <div class="p-6 flex-grow flex flex-col items-center justify-center text-center">
+                    {# Placeholder for actual stats if you add them later #}
+                    <div class="text-4xl font-bold text-accent-blue mb-2">
+                        {{ dataset_count | default('N/A') }} {# Pass dataset_count from your route #}
                     </div>
+                    <p class="text-text-secondary mb-4">Total Datasets Uploaded</p>
+                    <a href="{{ url_for('data.index') }}" class="btn btn-accent-blue mt-auto">
+                        <i class="fas fa-folder-open mr-2"></i> View All Datasets
+                    </a>
                 </div>
             </div>
             
-            <div class="shadow overflow-hidden sm:rounded-lg">
-                <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium">
+            {# My Visualizations Card #}
+            <div class="bg-white shadow-lg rounded-xl overflow-hidden flex flex-col
+                        transform hover:-translate-y-1 hover:shadow-xl transition-all duration-300">
+                <div class="px-6 py-5 border-b border-divider">
+                    <h3 class="text-xl leading-6 font-semibold text-text-color flex items-center">
+                        <i class="fas fa-chart-bar mr-3 text-accent-green"></i>
                         My Visualizations
                     </h3>
-                    <p class="mt-1 max-w-2xl text-sm text-text-secondary">
-                        Summary of your generated visualizations.
+                    <p class="mt-1 text-sm text-text-secondary">
+                        Gallery of your generated dashboards.
                     </p>
                 </div>
-                <div class="border-t border-border-color px-4 py-5 sm:px-6">
-                    <div class="text-center">
-                        <a href="{{ url_for('visual.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-magenta-primary">
-                            View All Visualizations
-                        </a>
+                <div class="p-6 flex-grow flex flex-col items-center justify-center text-center">
+                     {# Placeholder for actual stats if you add them later #}
+                    <div class="text-4xl font-bold text-accent-green mb-2">
+                        {{ visual_count | default('N/A') }} {# Pass visual_count from your route #}
                     </div>
+                    <p class="text-text-secondary mb-4">Total Visualizations Created</p>
+                    <a href="{{ url_for('visual.index') }}" class="btn btn-accent-green mt-auto">
+                        <i class="fas fa-eye mr-2"></i> View All Visualizations
+                    </a>
                 </div>
             </div>
-            
-            <a href="#" onclick="confirmAndSubmit()" 
-               class="justify-self-start inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm">
-                Delete Account
-            </a>
+        </div>
 
-            <!-- hidden form (with CSRF) -->
-            <form id="delete-account-form"
-                action="{{ url_for('auth.delete_account') }}"
-                method="POST"
-                style="display: none;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            </form>
+        <!-- Account Management Section -->
+        <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+            <div class="px-6 py-5 border-b border-divider">
+                <h3 class="text-xl leading-6 font-semibold text-text-color flex items-center">
+                    <i class="fas fa-cog mr-3 text-accent-amber"></i>
+                    Account Management
+                </h3>
+                 <p class="mt-1 text-sm text-text-secondary">
+                    Manage your account settings and preferences.
+                </p>
+            </div>
+            <div class="p-6">
+                <button onclick="confirmAndSubmit()" 
+                   class="btn btn-danger w-full sm:w-auto">
+                    <i class="fas fa-trash-alt mr-2"></i> Delete Account
+                </button>
+                <p class="text-xs text-text-tertiary mt-2">
+                    Warning: This action is permanent and cannot be undone. All your data, datasets, and visualizations will be erased.
+                </p>
 
+                <!-- Hidden form (with CSRF) - no change needed here -->
+                <form id="delete-account-form"
+                    action="{{ url_for('auth.delete_account') }}"
+                    method="POST"
+                    style="display: none;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Account Delete Confirmation Modal -->
 <div id="delete-account-modal"
-     class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-    <h3 class="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
-    <p class="text-gray-600 mb-6">
-      Are you sure you want to delete your account? All related data will be erased. This cannot be undone.
+     class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 backdrop-blur-sm">
+  {# Using bg-white for the modal itself so it picks up the main.css card styling #}
+  <div class="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full m-4 border border-danger
+              transform transition-all duration-300 ease-out scale-95 opacity-0" 
+       id="delete-modal-content"> {/* Added ID for JS animation */}
+    <div class="text-center">
+        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-danger-light mb-5">
+            <i class="fas fa-exclamation-triangle text-3xl text-danger-dark"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-text-color mb-3">Confirm Account Deletion</h3>
+    </div>
+    <p class="text-text-secondary mb-6 text-center">
+      Are you sure you want to permanently delete your account? All associated data, including datasets and visualizations, will be erased. 
+      <strong class="text-text-color">This action cannot be undone.</strong>
     </p>
-    <div class="flex justify-end space-x-4">
+    <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
       <button id="cancel-delete-account"
-              class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition">
-        Cancel
+              class="btn btn-secondary w-full sm:w-auto">
+        <i class="fas fa-times mr-2"></i> Cancel
       </button>
       <button id="confirm-delete-account"
-              class="bg-pink-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
-        Delete
+              class="btn btn-danger w-full sm:w-auto">
+        <i class="fas fa-trash-alt mr-2"></i> Yes, Delete My Account
       </button>
     </div>
   </div>

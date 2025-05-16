@@ -2373,3 +2373,19 @@ pre code { background-color: transparent; padding: 0; border: none; }
     font-size: 0.8rem;      /* Smaller font for headers */
     /* Padding is inherited from the rule above or can be set explicitly if different values are needed */
 }
+
+.themed-card {
+    background-color: var(--card-bg) !important;
+    background-image: var(--gradient-card) !important; /* Added !important here too just in case */
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-color) !important; /* Added !important */
+    border-radius: var(--radius-lg) !important; /* Added !important */
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-md) !important; /* Added !important */
+}
+
+.themed-card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: var(--shadow-xl), 0 0 15px var(--magenta-glow-faint) !important; /* Added !important */
+    border-color: var(--border-color-light) !important; /* Added !important */
+}

@@ -87,21 +87,23 @@
             </div>
         </div>
         
-        <!-- Processing Modal -->
-        <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-modal">
-            <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full"> {# Card style, use var(--shadow-xl) #}
-                <h3 class="text-xl font-bold mb-4">Processing Dataset</h3>
-                <div class="mb-4">
-                    <div class="progress-container"> {# Styled by main.css #}
-                        <div id="progress-bar" style="width: 0%"></div> {# Styled by main.css #}
-                    </div>
-                    <p id="progress-label" class="text-sm mt-2">Initializing...</p> {# Styled by main.css #}
+    <!-- Processing Modal -->
+    <div id="processing-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-popover"> 
+        {# Changed bg-opacity-50 to bg-opacity-75 for a stronger overlay #}
+        {# Changed z-modal (40) to z-popover (50) to match profile delete modal, or even z-tooltip (60) if needed #}
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4" style="color: var(--text-color);">Processing Dataset</h3>
+            <div class="mb-4">
+                <div class="progress-container">
+                    <div id="progress-bar" style="width: 0%"></div>
                 </div>
-                <p class="text-sm">
-                    Please wait while we process your dataset. This may take a few moments.
-                </p>
+                <p id="progress-label" class="text-sm mt-2" style="color: var(--text-secondary);">Initializing...</p>
             </div>
+            <p class="text-sm" style="color: var(--text-secondary);">
+                Please wait while we process your dataset. This may take a few moments.
+            </p>
         </div>
+    </div>
     </div>
 </div>
 {% endblock %}
