@@ -112,7 +112,6 @@ Open your browser and navigate to http://127.0.0.1:5000
 - [API Documentation](#-api-documentation)
 - [Technology Stack](#-technology-stack)
 - [Project Structure](#-project-structure)
-- [Contributing](#-contributing)
 - [Troubleshooting](#-troubleshooting)
 - [License](#-license)
 - [Team](#-team)
@@ -459,32 +458,6 @@ DynaDash/
 ├── run.py                  # Application entry point
 └── README.md               # Project documentation
 ```
-
-## 🤝 Contributing
-
-We welcome contributions to DynaDash! Here's how you can help:
-
-1. **Fork the repository**
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Commit your changes**
-   ```bash
-   git commit -m 'Add some amazing feature'
-   ```
-4. **Push to the branch**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-5. **Open a Pull Request**
-
-### Development Guidelines
-
-- Follow PEP 8 coding style for Python code
-- Write tests for new features
-- Update documentation to reflect your changes
-- Add comments for complex logic
 
 ## ❓ Troubleshooting
 
