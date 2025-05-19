@@ -19,6 +19,7 @@ class Config:
     
     # Anthropic Claude API settings
     ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+    print("Loaded key:", ANTHROPIC_API_KEY)
     
     # Socket.IO settings
     SOCKETIO_ASYNC_MODE = 'threading'
