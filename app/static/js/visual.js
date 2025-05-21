@@ -3,6 +3,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ---------- Share Page: confirm deletion ----------
   const unshareForms = document.querySelectorAll('form[action*="/unshare/"]');
+  let selectedUnshareForm = null;
+
+  const modal = document.getElementById("unshare-modal");
+  const modalContent = document.getElementById("unshare-modal-content");
+  const cancelBtn = document.getElementById("cancel-unshare");
+  const confirmBtn = document.getElementById("confirm-unshare");
+
+  unshareForms.forEach(form => {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault(); // Prevent the form from submitting immediately
+      selectedUnshareForm = form; // Store the current form in a variable
+      // Show the modal
+      modal.classList.remove("hidden");
+      setTimeout(() => {
+         modalContent.classList.remove("scale-95", "opacity-0");
+      }, 10);
+    });
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    modal.classList.add("hidden");
+    modalContent.classList.add("scale-95", "opacity-0");
+    selectedUnshareForm = null;
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (selectedUnshareForm) {
+      selectedUnshareForm.submit();
+    }
+  });
+
+  /*
+  const unshareForms = document.querySelectorAll('form[action*="/unshare/"]');
   unshareForms.forEach(form => {
     form.addEventListener('submit', function (e) {
       const confirmed = confirm("Are you sure you want to remove this user's access?");
@@ -11,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
+  */
 
   // ---------- View Page: fullscreen mode ----------
   const fullscreenBtn = document.getElementById("fullscreen-btn");
